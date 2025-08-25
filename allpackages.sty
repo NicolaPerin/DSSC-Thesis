@@ -1,0 +1,58 @@
+% Typographical rules for the English language
+\usepackage[UKenglish]{babel}
+
+% Clickable links and references
+% \usepackage{hyperref}
+\usepackage[pdfa, pdfversion=1.7]{hyperref}
+
+
+
+% Ensure that the final file is in PDF/A as requested
+% by the university
+\usepackage[a-1b]{pdfx}
+% \usepackage{fontspec}
+
+% Font-related packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{inconsolata}
+
+% Needed to render the cover
+\usepackage{fancyhdr}
+
+% Figures and subfigures
+\usepackage{graphicx}
+% \usepackage{subfigure}
+\usepackage{subcaption}
+
+% Improved tables
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{booktabs}
+
+% To have appendices appear in the TOC
+\usepackage[titletoc]{appendix}
+
+% Needed for floating images
+\usepackage{float}
+
+% Improved verbatim appearance
+\usepackage{fancyvrb}
+
+% Math stuff
+\usepackage{amsmath}
+\numberwithin{equation}{section}
+
+% For code sections
+\usepackage{minted}
+
+\usepackage{colorprofiles}
+
+% biblatex is useful because it autodetects unused references
+% and sorts used ones by occurrence.
+\usepackage{csquotes}
+\usepackage[sorting=none, backend=bibtex]{biblatex}
+% \usepackage[backend=biber,style=numeric,sorting=nyt]{biblatex}
+\addbibresource{bib/Bibliography.bib}
+
+\input{settings/Settings}

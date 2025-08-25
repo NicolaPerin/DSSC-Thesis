@@ -1,0 +1,25 @@
+# LaTeX output
+main.aux
+main.bcf
+main.out
+main.log
+main.run.xml
+main.toc
+main.bbl
+main.blg
+main-blx.bib
+
+pdfa.xmpi
+
+# pdf document (comment it at the end)
+main.pdf
+
+# minted folder
+_minted-main/
+_minted-main/*
+
+# drawio backup files
+**/*.bkp
+
+# Editor folders
+**/auto/
