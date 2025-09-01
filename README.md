@@ -1,7 +1,7 @@
-# New Approaches in Scientific Computing: The Design of a Cloud-Ready HPC Infrastructure
+# FAIR Data Management for Electron Microscopy
 
-This repository contains the LaTeX sources for my master’s thesis.  
-The thesis presents the design and implementation of a data management platform integrated with a cloud-ready HPC environment, focusing on identity federation, object storage, asynchronous processing, and scientific data formats.
+This repository contains the LaTeX sources of my master’s thesis.
+The work presents the design and implementation of a web application for managing experimental data in a scientific HPC context. The application is built with Django and deployed on the **VirtualOrfeo** K3s cluster, integrating modern identity, storage, and processing components.
 
 ---
 
