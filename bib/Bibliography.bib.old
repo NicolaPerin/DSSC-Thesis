@@ -1,0 +1,277 @@
+@article{Poger2023BigDataEM,
+  author  = {Poger, David and Yen, Lisa and Braet, Filip},
+  title   = {Big data in contemporary electron microscopy: challenges and opportunities in data transfer, compute and management},
+  journal = {Histochemistry and Cell Biology},
+  year    = {2023},
+  volume  = {160},
+  number  = {3},
+  pages   = {169--192},
+  doi     = {10.1007/s00418-023-02191-8},
+  url     = {https://pmc.ncbi.nlm.nih.gov/articles/PMC10492738/}
+}
+
+@article{Moore2021OMENGFF,
+  author  = {Moore, Josh and Allan, Chris and Besson, {S{\'e}bastien} and Burel, Jean-Marie and Diel, Erin and Gault, David and Kozlowski, Kevin and Lindner, Dominik and Linkert, Melissa and Manz, Trevor and Moore, Will and Pape, Constantin and Tischer, Christian and Swedlow, Jason R.},
+  title   = {OME-NGFF: a next-generation file format for expanding bioimaging data-access strategies},
+  journal = {Nature Methods},
+  year    = {2021},
+  volume  = {18},
+  number  = {12},
+  pages   = {1496--1498},
+  doi     = {10.1038/s41592-021-01326-w},
+  url     = {https://pubmed.ncbi.nlm.nih.gov/34845388/}
+}
+
+@article{Korir2024TenRecs,
+  author  = {Korir, Paul K. and Kleywegt, Gerard J. and others},
+  title   = {Ten recommendations for organising bioimaging data for archival},
+  journal = {F1000Research},
+  year    = {2024},
+  volume  = {13},
+  pages   = {112},
+  doi     = {10.12688/f1000research.142422.2},
+  url     = {https://pmc.ncbi.nlm.nih.gov/articles/PMC10938051/},
+  note    = {Includes discussion on proprietary formats and file-organization practices}
+}
+
+@article{Wilkinson2016FAIR,
+  author  = {Wilkinson, Mark D. and Dumontier, Michel and Aalbersberg, IJsbrand Jan and Appleton, Gabrielle and Axton, Myles and Baak, Arie and {et al.}},
+  title   = {The FAIR Guiding Principles for scientific data management and stewardship},
+  journal = {Scientific Data},
+  year    = {2016},
+  volume  = {3},
+  pages   = {160018},
+  doi     = {10.1038/sdata.2016.18},
+  url     = {https://www.nature.com/articles/sdata201618}
+}
+
+@misc{GOFAIRPrinciples,
+  author       = {{GO FAIR Initiative}},
+  title        = {FAIR Principles},
+  year         = {2016},
+  url          = {https://www.go-fair.org/fair-principles/},
+  howpublished = {\url{https://www.go-fair.org/fair-principles/}},
+  note         = {Accessed 2025-08-26}
+}
+
+@report{EC2018TurningFAIR,
+  author      = {Hodson, Simon and Jones, Sarah and Collins, Sandra and Genova, Fran\c{c}oise and Harrower, Natalie and Laaksonen, Leif and Mietchen, Daniel and Petrauskait{\.e}, R\={u}ta and Wittenburg, Peter},
+  title       = {Turning FAIR into Reality: Final Report and Action Plan from the European Commission Expert Group on FAIR Data},
+  institution = {Publications Office of the European Union},
+  year        = {2018},
+  doi         = {10.2777/1524},
+  url         = {https://op.europa.eu/en/publication-detail/-/publication/7769a148-f1f6-11e8-9982-01aa75ed71a1}
+}
+
+@misc{EC2021HEGuide,
+  author       = {{European Commission}},
+  title        = {Horizon Europe Programme Guide},
+  year         = {2021},
+  url          = {https://ec.europa.eu/info/funding-tenders/opportunities/docs/2021-2027/horizon/guidance/programme-guide_horizon_en.pdf},
+  howpublished = {\url{https://ec.europa.eu/info/funding-tenders/opportunities/docs/2021-2027/horizon/guidance/programme-guide_horizon_en.pdf}},
+  note         = {Accessed 2025-08-26}
+}
+
+@article{Iudin2016EMPIAR,
+  author  = {Iudin, Andrii and Korir, Paul K. and Salavert-Torres, Josep and Kleywegt, Gerard J. and Patwardhan, Ardan},
+  title   = {EMPIAR: a public archive for raw electron microscopy image data},
+  journal = {Nature Methods},
+  year    = {2016},
+  volume  = {13},
+  number  = {5},
+  pages   = {387--388},
+  doi     = {10.1038/nmeth.3806},
+  url     = {https://pubmed.ncbi.nlm.nih.gov/27067018/}
+}
+
+@article{Konnecke2015NeXus,
+  author  = {K{\"o}nnecke, Mark and Akeroyd, Frederick A. and Bernstein, Herbert J. and Brewster, Aaron S. and Campbell, Stuart I. and Clausen, Bj{\"o}rn and Cottrell, Stephen and Hoffmann, Jens Uwe and Jemian, Pete R. and M{\"a}nnicke, David and Osborn, Raymond and Peterson, Peter F. and Richter, Tobias and Suzuki, Jiro and Watts, Benjamin and Wintersberger, Eugen and Wuttke, Joachim},
+  title   = {The NeXus data format},
+  journal = {Journal of Applied Crystallography},
+  year    = {2015},
+  volume  = {48},
+  number  = {1},
+  pages   = {301--305},
+  doi     = {10.1107/S1600576714027575},
+  url     = {https://journals.iucr.org/j/issues/2015/01/00/po5029/po5029.pdf}
+}
+
+@misc{NXemManual,
+  author       = {{NeXus International Advisory Committee (NIAC)}},
+  title        = {NXem --- NeXus Contributed Application Definition for Electron Microscopy},
+  year         = {2024},
+  howpublished = {\url{https://manual.nexusformat.org/classes/contributed_definitions/NXem.html}},
+  url          = {https://manual.nexusformat.org/classes/contributed_definitions/NXem.html},
+  note         = {Version 2024.02; Accessed 2025-08-26}
+}
+
+@misc{NXemFAIRmat,
+  author       = {{FAIRmat (NFDI)}},
+  title        = {NXem --- NeXus Contributed Application Definition (FAIRmat mirror)},
+  year         = {2024},
+  howpublished = {\url{https://fairmat-nfdi.github.io/nexus_definitions/classes/contributed_definitions/NXem.html}},
+  url          = {https://fairmat-nfdi.github.io/nexus_definitions/classes/contributed_definitions/NXem.html},
+  note         = {Accessed 2025-08-26}
+}
+
+@misc{AreaLAME,
+  author       = {{Area Science Park}},
+  title        = {LAME --- Electron Microscopy Laboratory},
+  year         = {2025},
+  howpublished = {\url{https://www.areasciencepark.it/en/research-infrastructures/innovative-materials/lame-electron-microscopy-laboratory/}},
+  url          = {https://www.areasciencepark.it/en/research-infrastructures/innovative-materials/lame-electron-microscopy-laboratory/},
+  note         = {Accessed 2025-08-26}
+}
+
+@misc{NFFADI_Project,
+  author       = {{NFFA-DI}},
+  title        = {The advanced infrastructure for nanosciences},
+  year         = {2025},
+  howpublished = {\url{https://nffa-di.it/en/about-us/project/}},
+  note         = {Accessed 2025-08-26}
+}
+
+@misc{NFFADI_OFED,
+  author       = {{NFFA-DI}},
+  title        = {Data infrastructure: OFED (Overarching FAIR Ecosystem for Data)},
+  year         = {2025},
+  howpublished = {\url{https://nffa-di.it/en/data-infrastructure/}},
+  note         = {Accessed 2025-08-26}
+}
+
+@misc{NFFADI_DataPolicy,
+  author       = {{NFFA-DI}},
+  title        = {Research Data Policy},
+  year         = {2025},
+  howpublished = {\url{https://nffa-di.it/en/research-data-policy}},
+  note         = {Accessed 2025-08-26}
+}
+
+@misc{OrfeoDocs,
+  author       = {{Area Science Park}},
+  title        = {Orfeo documentation!},
+  year         = {2025},
+  howpublished = {\url{https://orfeo-doc.areasciencepark.it/}},
+  note         = {Accessed 2025-08-26}
+}
+
+@misc{LADEPage,
+  author       = {{Area Science Park}},
+  title        = {LADE --- Laboratory of Data Engineering},
+  year         = {2025},
+  howpublished = {\url{https://www.areasciencepark.it/en/research-infrastructures/data-engineering-lade/}},
+  note         = {Accessed 2025-08-26}
+}
+
+@misc{NFFADI_OFED_Zenodo2024,
+  author       = {Bazzocchi, Federica},
+  title        = {Data Management in NFFA-DI: OFED (Overarching Fair Ecosystem for Data)},
+  year         = {2024},
+  howpublished = {\url{https://zenodo.org/records/13773924}},
+  doi          = {10.5281/zenodo.13773924},
+  note         = {Presentation; Accessed 2025-08-26}
+}
+
+@misc{ORFEO_Docs_Home,
+  author       = {ORFEO Team, Area Science Park},
+  title        = {Welcome to ORFEO documentation!},
+  year         = {2023},
+  howpublished = {\url{https://orfeo-doc.areasciencepark.it/}},
+  note         = {Accessed 2025-08-27}
+}
+
+@misc{ORFEO_Docs_Storage,
+  author       = {ORFEO Team, Area Science Park},
+  title        = {Storage resources --- ORFEO documentation},
+  year         = {2023},
+  howpublished = {\url{https://orfeo-doc.areasciencepark.it/HPC/storage-resources/}},
+  note         = {Details on Ceph cluster size, fast/home/scratch areas, and LTS; Accessed 2025-08-27}
+}
+
+@misc{ORFEO_Docs_Computational,
+  author       = {ORFEO Team, Area Science Park},
+  title        = {Computational resources --- ORFEO documentation},
+  year         = {2023},
+  howpublished = {\url{https://orfeo-doc.areasciencepark.it/HPC/computational-resources/}},
+  note         = {Internal and external networking overview; Accessed 2025-08-27}
+}
+
+@misc{LADE_Overview_ORFEO,
+  author       = {Area Science Park},
+  title        = {Laboratory of Data Engineering (LADE)},
+  year         = {2025},
+  howpublished = {\url{https://www.areasciencepark.it/en/research-infrastructures/data-engineering-lade/}},
+  note         = {ORFEO overview and role for research data; Accessed 2025-08-27}
+}
+
+@misc{Ceph_RADOS,
+  author       = {Ceph Project},
+  title        = {Ceph Storage Cluster (RADOS) --- Official Documentation},
+  year         = {2025},
+  howpublished = {\url{https://docs.ceph.com/en/reef/rados/}},
+  note         = {Cluster roles and architecture; Accessed 2025-08-27}
+}
+
+@misc{CephFS,
+  author       = {Ceph Project},
+  title        = {Ceph File System (CephFS) --- Official Documentation},
+  year         = {2025},
+  howpublished = {\url{https://docs.ceph.com/en/reef/cephfs/}},
+  note         = {POSIX-like shared filesystem on top of RADOS; Accessed 2025-08-27}
+}
+
+@misc{RedHat_CephFS,
+  author       = {Red Hat},
+  title        = {Introduction to the Ceph File System},
+  year         = {2025},
+  howpublished = {\url{https://docs.redhat.com/en/documentation/red_hat_ceph_storage/4/html/file_system_guide/introduction-to-the-ceph-file-system}},
+  note         = {Background and semantics of CephFS; Accessed 2025-08-27}
+}
+
+@misc{Ceph_EC,
+  author       = {Ceph Project},
+  title        = {Erasure code --- Concepts and Operations},
+  year         = {2025},
+  howpublished = {\url{https://docs.ceph.com/en/reef/rados/operations/erasure-code/}},
+  note         = {Explains k+m chunks and trade-offs vs replication; Accessed 2025-08-27}
+}
+
+@misc{Ceph_Pools,
+  author       = {Ceph Project},
+  title        = {Pools --- Data protection strategies in Ceph (replicated vs erasure)},
+  year         = {2025},
+  howpublished = {\url{https://docs.ceph.com/en/reef/rados/operations/pools}},
+  note         = {Pool types and durability/performance trade-offs; Accessed 2025-08-27}
+}
+
+@misc{Ceph_RGW_Overview,
+  author       = {Ceph Project},
+  title        = {Ceph Object Gateway (\texttt{radosgw})},
+  year         = {2025},
+  howpublished = {\url{https://docs.ceph.com/en/reef/radosgw}},
+  note         = {Overview of S3/Swift compatibility and user management; Accessed 2025-08-27}
+}
+
+@misc{Ceph_RGW_S3,
+  author       = {Ceph Project},
+  title        = {Ceph Object Gateway S3 API},
+  year         = {2025},
+  howpublished = {\url{https://docs.ceph.com/en/latest/radosgw/s3/}},
+  note         = {Operations and authentication for S3-compatible access; Accessed 2025-08-27}
+}
+
+@misc{AWS_S3_UserGuide,
+  author       = {Amazon Web Services},
+  title        = {What is Amazon S3? --- User Guide},
+  year         = {2025},
+  howpublished = {\url{https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html}},
+  note         = {Conceptual overview of object storage and use cases; Accessed 2025-08-27}
+}
+
+@misc{AWS_S3_API,
+  author       = {Amazon Web Services},
+  title        = {Amazon S3 API Reference},
+  year         = {2025},
+  howpublished = {\url{https://docs.aws.amazon.com/AmazonS3/latest/API/Welcome.html}},
+  note         = {Reference for bucket and object operations; Accessed 2025-08-27}
+}

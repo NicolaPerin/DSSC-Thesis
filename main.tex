@@ -1,99 +1,91 @@
-      %-----------------------------------------%
-      %                                         %
-      % Credits for this template:              %
-      %   - Stefano Bianchi¹   (2014-03-27)     %
-      %   - Tommaso Fonda²     (2023-11-06)     %
-      %                                         %
-      %  ¹ Original version                     %
-      %  ² Updated and translated into English  %
-      %                                         %
-      %-----------------------------------------%
+%-----------------------------------------%
+%                                         %
+% Credits for this template:              %
+%   - Stefano Bianchi¹   (2014-03-27)     %
+%   - Tommaso Fonda²     (2023-11-06)     %
+%                                         %
+%  ¹ Original version                     %
+%  ² Updated and translated into English  %
+%                                         %
+%-----------------------------------------%
 
 % Replace 'oneside' with 'twoside' for double-side printing
 % \documentclass[a4paper,twoside,openany]{book}
 \documentclass[a4paper,oneside,openany]{book}
 
-%load all the packages needed for the document from a sty file
+% load all the packages needed for the document from a sty file
 \usepackage{allpackages}
 
-% Cover
-\input{front/Cover}   % \begin{document}  in this file !!!
-% Dedication
+\begin{document}   % 🔥 move begin{document} here, not in Cover.tex
+	
+	% Cover
+	\input{front/Cover}
+	
+	% leave one page blank
+	\null\thispagestyle{empty}
+	\newpage
 
-%leave one page blank
-\null\thispagestyle{empty}
-\newpage
-
-% Dedication
-\input{front/Dedication}
-
-% Roman page numbering for abstract, ToC and introduction
-\frontmatter
-\pagenumbering{Roman}
-
-% Table of contents
-{
-    \hypersetup{linkcolor=black}
-    \tableofcontents
-}
-
-\renewcommand{\chaptermark}[1]{\markboth{\MakeUppercase{\ #1}}{}}
-% Abstract
-\input{front/Abstract_en}
-%Abstract in Italian
-\input{front/Abstract_it}
-
-% Introduction
-    % Do not edit
-\renewcommand{\chaptermark}[1]{\markboth{\MakeUppercase{\ #1}}{}}
-\setcounter{section}{0}
-% use Latin numbering for the introduction
-% \renewcommand{\thechapter}{\Roman{chapter}}
-\input{front/Introduction}
-
-
-%*******************************************************
-% Chapters
-%*******************************************************
-\mainmatter
-% Do not edit
-\renewcommand{\chaptermark}[1]{\markboth{\MakeUppercase{\chaptername\ \thechapter.\ #1}}{}}
-
-% bring back the Arabic numbering
-\renewcommand{\thechapter}{\arabic{chapter}}
-
-\input{main/Chapter1}
-\input{main/Chapter2}
-\input{main/Chapter3}
-\input{main/Chapter4}
-
-% Conclusion
-\input{back/Conclusion}
-
-% Appendix
-% Do not edit
-\pagestyle{fancy}
-\renewcommand{\chaptermark}[1]{\markboth{\MakeUppercase{APPENDIX\ \thechapter.\ #1}}{}}
-
-\appendix
-\input{back/Appendix1}
-\input{back/Appendix2}
-\input{back/Appendix3}
-
-\backmatter
-
-% Bib items with no directly citation:
-\nocite{vyas2022}
-
-%%%%%%%%%
-
-% Bibliography
-\addcontentsline{toc}{chapter}{Bibliography}
-\printbibliography
-
-% FinalDedication
-\newpage
-\null\thispagestyle{empty}
-\input{back/FinalDedication}
-
+	
+	% Dedication
+	\input{front/Dedication}
+	
+	% Roman page numbering for abstract, ToC and introduction
+	\frontmatter
+	\pagenumbering{Roman}
+	
+	% Table of contents
+	{
+		\hypersetup{linkcolor=black}
+		\tableofcontents
+	}
+	
+	\renewcommand{\chaptermark}[1]{\markboth{\MakeUppercase{\ #1}}{}}
+	
+	% Abstract
+	\input{front/Abstract_en}
+	% Abstract in Italian
+	\input{front/Abstract_it}
+	
+	% Introduction
+	\renewcommand{\chaptermark}[1]{\markboth{\MakeUppercase{\ #1}}{}}
+	\setcounter{section}{0}
+	\input{front/Introduction}
+	
+	
+	%*******************************************************
+	% Chapters
+	%*******************************************************
+	\mainmatter
+	\renewcommand{\chaptermark}[1]{\markboth{\MakeUppercase{\chaptername\ \thechapter.\ #1}}{}}
+	\renewcommand{\thechapter}{\arabic{chapter}}
+	
+	\input{main/Chapter1}
+	\input{main/Chapter2}
+	\input{main/Chapter3}
+	\input{main/Chapter4}
+	\input{main/Chapter5}
+	
+	% Conclusion
+	\input{back/Conclusion}
+	
+	% Appendix
+	\pagestyle{fancy}
+	\renewcommand{\chaptermark}[1]{\markboth{\MakeUppercase{APPENDIX\ \thechapter.\ #1}}{}}
+	
+	\appendix
+	\input{back/Appendix1}
+	
+	\backmatter
+	
+	%%%%%%%%%
+	
+	% Bibliography
+	\addcontentsline{toc}{chapter}{Bibliography}
+	\printbibliography
+	
+	% Final Dedication
+	\newpage
+	\null\thispagestyle{empty}
+	\input{back/FinalDedication}
+	
 \end{document}

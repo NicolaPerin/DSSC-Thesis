@@ -1,80 +1,52 @@
-% Provides the \thetitle and other useful macros
-\usepackage{titling}
+% Do not load packages here!
 
-% Needed for the transparent full-page background logo
-\usepackage{eso-pic}
-\usepackage{transparent}
-
-\usepackage[a4paper,top=4.5cm,bottom=4.5cm,left=2cm,right=2cm]{geometry}
-
-% Do not edit
 % Set up the transparent full-page background logo
 \newcommand\BackgroundPicFront{
-    \put(-4,0){
-        \parbox[b][\paperheight]{\paperwidth}{
-            \vfill
-            \centering
-            {\transparent{0.07}\includegraphics[width=\paperwidth,height=\paperheight,keepaspectratio]{img/units_logo_old.png}}
-            \vfill
-        }
-    }
+	\put(-4,0){
+		\parbox[b][\paperheight]{\paperwidth}{
+			\vfill
+			\centering
+			{\transparent{0.07}\includegraphics[width=\paperwidth,height=\paperheight,keepaspectratio]{img/units_logo.png}}
+			\vfill
+		}
+	}
 }
 
 \title{a\\ b}
 \author{Nicola Perin}
-\begin{document}
+
 \begin{titlepage}
-    \begin{center}
-    % Insert the background here
-    \AddToShipoutPicture{\BackgroundPicFront}
-    {\LARGE {\bfseries UNIVERSITY OF TRIESTE \\}}
-    % \vspace{5mm}
-    {\Large {\bfseries Department of Mathematics, Informatics and Geosciences\\}}
-    \vspace{1cm}
-    \includegraphics[width=5cm,height=5cm]{img/units_logo.png}\\[1cm]
-
-    \vfill
-    % {\LARGE
-    %     Master's Degree in: \\ Data Science and Scientific Computing \\
-    % }
-
-    {\Large {
-        \bfseries Master's Degree in\\
-      }
-    }
-    {\LARGE{
-        \bfseries Data Science and Scientific Computing \\
-      }
-    }
-    {
-      \Large
-      Research thesis in: Data Management \\
-    }
-    \vspace{1cm}
-    {\huge
-        {\bfseries{\thetitle}}
-    }
-    \vspace{1cm}
-
-    % Replace the date with the correct one before printing the final version!
-    {\large 2025-09-19 \\[1cm]
-    }
-
-    % Table for author's and (co-)supervisor's names
-        {\Large
-            \setlength{\tabcolsep}{32pt}
-            \begin{tabularx}{\linewidth}{ >{\raggedleft}X >{\raggedright\arraybackslash}X}
-                Candidate & Supervisor \\
-                \bfseries Nicola Perin & \bfseries Prof. Federica Bazzocchi\\ [5mm]
-            \end{tabularx}
-        }
-
-        % Bottom of the page
-        \vfill
-        {\Large
-            Academic Year 2024--2025
-        }
-    \end{center}
+	\begin{center}
+		% Insert the background here
+		% \AddToShipoutPicture{\BackgroundPicFront}
+		{\LARGE {\bfseries UNIVERSITY OF TRIESTE \\}}
+		{\Large {\bfseries Department of Mathematics, Informatics and Geosciences\\}}
+		\vspace{1cm}
+		\includegraphics[width=5cm,height=5cm]{img/units_logo.png}\\[1cm]
+		
+		\vfill
+		{\Large \bfseries Master's Degree in\\}
+		{\LARGE \bfseries Data Science and Scientific Computing \\}
+		{\Large Research thesis in: Data Management \\}
+		\vspace{1cm}
+		
+		{\huge \bfseries \thetitle}
+		\vspace{1cm}
+		
+		{\large 2025-09-19 \\[1cm]}
+		
+		{\Large
+			\setlength{\tabcolsep}{32pt}
+			\begin{tabularx}{\linewidth}{ >{\raggedleft}X >{\raggedright\arraybackslash}X}
+				Candidate & Supervisor \\
+				\bfseries Nicola Perin & \bfseries Prof. Federica Bazzocchi\\ [5mm]
+			\end{tabularx}
+		}
+		
+		\vfill
+		{\Large Academic Year 2024--2025}
+	\end{center}
 \end{titlepage}
+
 \ClearShipoutPicture
 \newgeometry{}

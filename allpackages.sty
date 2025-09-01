@@ -1,16 +1,20 @@
 % Typographical rules for the English language
 \usepackage[UKenglish]{babel}
 
-% Clickable links and references
-% \usepackage{hyperref}
-\usepackage[pdfa, pdfversion=1.7]{hyperref}
-
-
-
-% Ensure that the final file is in PDF/A as requested
-% by the university
+% PDF/A output (loads hyperref internally)
 \usepackage[a-1b]{pdfx}
-% \usepackage{fontspec}
+
+% Configure hyperlinks (must come *after* pdfx has loaded hyperref)
+\hypersetup{
+  pdfversion=1.7,
+  colorlinks=true,
+  linkcolor=black,
+  citecolor=black,
+  urlcolor=black
+}
+
+% Allow URLs to break at arbitrary points
+\usepackage{xurl}
 
 % Font-related packages
 \usepackage[utf8]{inputenc}
@@ -22,7 +26,6 @@
 
 % Figures and subfigures
 \usepackage{graphicx}
-% \usepackage{subfigure}
 \usepackage{subcaption}
 
 % Improved tables
@@ -35,6 +38,7 @@
 
 % Needed for floating images
 \usepackage{float}
+\usepackage{enumitem}
 
 % Improved verbatim appearance
 \usepackage{fancyvrb}
@@ -45,14 +49,21 @@
 
 % For code sections
 \usepackage{minted}
-
 \usepackage{colorprofiles}
 
-% biblatex is useful because it autodetects unused references
-% and sorts used ones by occurrence.
 \usepackage{csquotes}
-\usepackage[sorting=none, backend=bibtex]{biblatex}
-% \usepackage[backend=biber,style=numeric,sorting=nyt]{biblatex}
+\usepackage[backend=biber,style=authoryear,sorting=none]{biblatex}
 \addbibresource{bib/Bibliography.bib}
 
 \input{settings/Settings}
+
+% Cover page packages
+\usepackage{titling}
+\usepackage{eso-pic}
+\usepackage{transparent}
+\usepackage[a4paper,top=4.5cm,bottom=4.5cm,left=2cm,right=2cm]{geometry}
+
+
+% allpackages.sty
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,quotes,backgrounds}

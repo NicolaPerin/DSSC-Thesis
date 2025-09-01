@@ -1,0 +1,506 @@
+\chapter{Deployment and Validation in the VirtualOrfeo Environment}\label{chap:virtualorfeo-deployment}
+
+\section{The VirtualOrfeo Environment and Deployment}
+
+\subsection{VirtualOrfeo as a Digital Twin of the HPC Environment}
+
+To develop and test the data management platform in a realistic but safe setting, we use an internal system called \textbf{VirtualOrfeo}. VirtualOrfeo functions as a \emph{digital twin} of the ORFEO HPC cluster: a virtualized replica of its key infrastructure and services. This allows us to deploy and evaluate applications under conditions that closely mimic production, without the risk of disrupting the actual cluster. Digital twins are often used in High-Performance Computing (HPC) to experiment with configuration changes or new workflows before rolling them out in production \parencite{Ohmura2023TwdsDT}.
+
+VirtualOrfeo was originally created by Isac Pasianotto and Ruggero Lot as a general-purpose environment for ORFEO infrastructure testing. The work in this thesis builds on their platform: we use it to deploy and integrate the data management application, while the underlying environment itself is their contribution.
+
+The system is built from a collection of virtual machines (VMs) that replicate the main roles of the HPC cluster. They run on Linux KVM/QEMU and are managed through Vagrant and Ansible. The virtual machines represent essential services rather than the full production scale. For example:  
+
+\begin{itemize}
+	\item An authentication VM provides directory and identity services.  
+	\item One or more VMs host a lightweight Kubernetes cluster for containerized applications.  
+	\item Optional VMs simulate HPC login nodes, compute nodes with a Slurm scheduler, and storage nodes.  
+\end{itemize}
+
+The goal is to preserve fidelity where it matters while keeping the environment manageable. For instance, VirtualOrfeo runs a small Ceph cluster to mirror the storage architecture of ORFEO, and it includes a simplified Kubernetes deployment for cloud-native services. Differences remain: the virtual system operates at smaller scale, lacks specialized hardware, and cannot match the performance capacity of the real cluster. Still, the software stack and APIs are close enough to ensure that if our application runs successfully on VirtualOrfeo, it will work on the production cluster with only minor adjustments.
+
+\medskip
+
+In practice, VirtualOrfeo provides a controlled environment to connect our Django-based application with HPC components such as authentication, storage, and container orchestration. By offering a faithful but bounded replica of ORFEO’s software environment, it supports safe experimentation and rapid iteration, in line with DevOps practices in scientific computing \parencite{Ohmura2023TwdsDT}.
+
+
+\subsection{K3s Cluster Topology in the Virtual Environment}
+
+At the heart of VirtualOrfeo is a Kubernetes cluster deployed on one of the 
+virtual machines (or across a couple of VMs) using \textbf{K3s}. K3s is a 
+lightweight, certified Kubernetes distribution designed for resource-constrained 
+or edge environments\parencite{Rancher2021K3s}. Unlike a full-fledged multi-node 
+Kubernetes deployment, K3s packages the essential components into a single, 
+easy-to-install binary, reducing the complexity and footprint of the cluster. In 
+VirtualOrfeo, this K3s cluster provides the platform on which our web application 
+and related services are orchestrated as containers.
+
+\medskip
+
+The cluster topology is relatively simple. In our setup:  
+\begin{itemize}
+	\item A single VM (\texttt{kube01}) acts as the Kubernetes control-plane node 
+	and also runs as a worker node. This means the API server, scheduler, and 
+	controller-manager run on that VM, and it also hosts the application pods. 
+	(The K3s design allows one to add additional worker nodes easily if needed, 
+	but one node is sufficient for testing purposes.)
+	\item Another VM (\texttt{ipa01}) runs the identity management services 
+	(discussed later).
+	\item Additional VMs can be spun up for storage or other auxiliary roles 
+	(e.g., Ceph OSD servers).
+\end{itemize}
+
+All these VMs are connected via a private virtual network so that services can 
+reach each other using hostnames like \texttt{ipa01.virtualorfeo.it} or 
+\texttt{kube01.virtualorfeo.it}.
+
+\medskip
+
+Within the K3s cluster, we adopt a logical separation of concerns using 
+Kubernetes \textbf{namespaces}. For example, the Authentik identity provider is 
+deployed in its own namespace (called \texttt{authentik}), and our Django 
+application is deployed in another namespace (e.g.\ \texttt{lame-fair} for our 
+``FAIR data'' app). Namespaces provide isolation for configuration and secrets, 
+and they help mirror the structure of a real cluster where different services 
+might be managed by different teams.
+
+\medskip
+
+To allow external access to services running in K3s (which by default would only 
+be reachable inside the cluster network), VirtualOrfeo makes use of a Kubernetes 
+\textbf{Ingress} controller together with MetalLB for load-balancing. The ingress 
+controller (NGINX in our case) listens on a cluster IP address and routes 
+incoming HTTP/HTTPS requests to the appropriate service based on hostname. 
+
+MetalLB is a software load-balancer that can allocate a virtual IP address to 
+the ingress controller on the local network. In the virtual environment we 
+reserve an IP (for example, 192.168.132.100) as the ingress IP for all services. 
+We then define DNS entries (or simply \texttt{/etc/hosts} mappings during 
+development) such as:  
+\begin{itemize}
+	\item \texttt{auth.k3s.virtualorfeo.it}  
+	\item \texttt{lame-fair.k3s.virtualorfeo.it}  
+	\item \texttt{minio.k3s.virtualorfeo.it}  
+\end{itemize}
+
+All these hostnames point to the same ingress IP. This way, when we access 
+\texttt{https://lame-fair.k3s.virtualorfeo.it} in a browser, the request hits the 
+NGINX ingress on the K3s VM, which forwards it to the correct Kubernetes Service 
+(our Django app service) within the cluster. 
+
+The use of host-based routing and TLS termination at the ingress level mimics 
+how services would be exposed in a production environment (with real DNS 
+entries). The certificates used for TLS in VirtualOrfeo are issued by a local 
+Certificate Authority (the FreeIPA server, acting as a CA), so that we have 
+proper HTTPS without needing internet access. We configured 
+\textbf{cert-manager} on the cluster to obtain and refresh certificates from 
+this internal CA via the ACME protocol, automating the issuance of TLS 
+certificates for all service hostnames.
+
+\medskip
+
+In terms of storage for the cluster, K3s provides a default storage class (built 
+on local disk storage via the ``local-path'' provisioner), which we use for most 
+purposes. For example, the PostgreSQL database backing our Django app uses a 
+PersistentVolumeClaim that by default binds to local storage on 
+\texttt{kube01}. This is acceptable in a virtual environment where data 
+persistence is not mission-critical. 
+
+Optionally, VirtualOrfeo’s Ceph deployment could be integrated via a Container 
+Storage Interface (CSI) driver to supply distributed block storage (RBD volumes) 
+or shared filesystem volumes (CephFS) to the cluster, thereby simulating a more 
+production-like storage backend. However, to keep things simple, our deployment 
+mostly relies on the out-of-the-box storage provisioner for now. The key storage 
+integration we do leverage is object storage (Ceph’s RADOS Gateway), which will 
+be discussed in Section~\ref{sec:virtualorfeo-storage}.
+
+\medskip
+
+To summarize the topology: VirtualOrfeo’s Kubernetes is a lightweight cluster 
+hosting multiple namespaces (for Authentik, the Django app, monitoring tools, 
+etc.), all accessible through an NGINX ingress on a single IP. The infrastructure 
+pieces such as load balancing and certificate management are in place so that 
+each service behaves as if it were in a normal production cluster with distinct 
+hostnames and TLS. This setup allows our application to be deployed with the 
+same Helm charts and configurations that we would use on a real cluster, 
+providing high confidence that the behavior will be consistent when transitioning 
+to production.
+
+
+\medskip
+\noindent With the cluster topology in place, we can turn to the auxiliary services 
+that make the environment resemble a production HPC setting. 
+We begin with identity and access management, which provides 
+centralized authentication across the system.
+
+\subsection{Identity and Access Management in VirtualOrfeo} \label{sec:virtualorfeo-iam}
+
+The VirtualOrfeo environment includes a full \textbf{Identity and Access Management (IAM)} stack to mirror the authentication system of the production cluster. In this setup, we combine \textbf{FreeIPA} for directory services (accounts and groups) with \textbf{Authentik} as an OpenID Connect (OIDC) identity provider. 
+
+FreeIPA is an open-source identity management solution that provides an LDAP directory and a Kerberos realm for centralized authentication. It can be considered the upstream community version of Red Hat Identity Manager. Authentik is an open-source identity provider that supports single sign-on using modern protocols such as OAuth2, OIDC, and also SAML.  
+
+Together, these two systems simulate an enterprise-style authentication service. FreeIPA serves as the authoritative source of user identities (through LDAP), while Authentik acts as the user-facing login portal and token issuer for web applications.
+
+\medskip
+
+In the VirtualOrfeo setup, the FreeIPA server runs on the VM \texttt{ipa01}. It maintains a directory of user accounts and groups. For testing, dummy users can be created in FreeIPA (the Ansible scripts even set up some by default). FreeIPA also doubles as a Certificate Authority, issuing TLS certificates for services.  
+
+On the Kubernetes (K3s) side, Authentik is deployed via Helm in the \texttt{authentik} namespace. After deployment, a one-time initial configuration is required:  
+
+\begin{itemize}
+	\item \textbf{Bind account for LDAP access:}  
+	We create a dedicated service account in FreeIPA (e.g.\ \texttt{svc\_authentik}) for Authentik to use when binding to LDAP. This account is granted read permissions on users and groups (we added it to the ``User Administrators'' role). Authentik uses this account to synchronize users and to check passwords during login.  
+	
+	\item \textbf{LDAP source configuration in Authentik:}  
+	In the Authentik admin interface, we add an LDAP Directory source pointing to the FreeIPA server. We configure:  
+	\begin{itemize}
+		\item the LDAPS URL (\texttt{ldaps://ipa01.virtualorfeo.it}),  
+		\item the Base DN (e.g.\ \texttt{dc=virtualorfeo,dc=it}),  
+		\item the Bind DN (\texttt{uid=svc\_authentik,cn=users,cn=accounts,...}) and password,  
+		\item the attribute mapping (username $\rightarrow$ \texttt{uid}, email $\rightarrow$ \texttt{mail}, full name, groups).  
+	\end{itemize}  
+	Authentik ships with templates for FreeIPA/389ds, which simplifies this step. We enabled both user and group synchronization, and then triggered an initial sync: all existing FreeIPA users and groups were imported into Authentik.  
+	
+	\item \textbf{Federation of FreeIPA with Authentik:}  
+	Once this sync is configured, any FreeIPA user can log into Authentik. Credentials are checked against FreeIPA, while Authentik manages sessions and tokens. Effectively, FreeIPA remains the backend store, and Authentik acts as the OIDC-facing layer.  
+	
+	\item \textbf{Registering the Django app as an OIDC client:}  
+	We register our Django application in Authentik by creating a new Application entry (``Lame Fair'') and associating it with an OAuth2/OIDC Provider. Configuration details include:  
+	\begin{itemize}
+		\item \textbf{Client type:} Confidential (the app can securely store a client secret).  
+		\item \textbf{Redirect URIs:}  
+		\begin{itemize}
+			\item \texttt{https://lame-fair.k3s.virtualorfeo.it/oidc/callback/}
+			\item \texttt{https://lame-fair.k3s.virtualorfeo.it/}
+		\end{itemize}
+		\item \textbf{Flow:} Authorization Code flow with explicit user consent (OIDC default).  
+	\end{itemize}
+	
+	Authentik then generates a Client ID and Client Secret, which we inject into the Django deployment as Kubernetes secrets.  
+	
+	\item \textbf{Scopes and claims:}  
+	We enabled the standard \texttt{openid} scope plus \texttt{email}, \texttt{profile}, and \texttt{offline\_access}. This ensures the ID token includes email and profile data, and allows refresh tokens for long-lived sessions.  
+	We also configured claims mapping so that the ID token carries \texttt{preferred\_username} and \texttt{email}. Group memberships could also be mapped to a claim (e.g.\ \texttt{groups}) to drive role-based access in the app. While not strictly required here, the data is synchronized and could support advanced authorization (e.g.\ marking members of a ``app-admins'' group as administrators).  
+\end{itemize}
+
+\medskip
+
+Once configured, the login flow for our web application works as follows:  
+\begin{itemize}
+	\item The Django app redirects the user to Authentik’s OIDC authorization endpoint.  
+	\item Authentik displays a login form and validates credentials against FreeIPA.  
+	\item If successful, Authentik issues an authorization code and returns it to the app’s callback URL.  
+	\item The Django app exchanges the code for an ID Token (and optionally an Access Token).  
+	\item The ID Token is a JSON Web Token (JWT), signed by Authentik, containing identity claims such as username and email \parencite{OpenIDConnectCore}.  
+	\item Django verifies the token using Authentik’s public key and logs the user in (creating a local session or record if necessary).  
+\end{itemize}
+
+From this point on, the user is authenticated in the Django app. Credentials are never handled by the application itself; authentication is delegated to Authentik and FreeIPA. This improves security, enables single sign-on across services, and ensures that disabling a FreeIPA account immediately prevents further access to the application.
+
+\medskip
+
+The VirtualOrfeo IAM configuration demonstrates the architecture outlined earlier in Section~\ref{sec:virtualorfeo-iam-design}, now realized in practice. We have established a trust between the Django application and Authentik via OIDC, and another trust between Authentik and FreeIPA via LDAP. FreeIPA remains the central source of truth for credentials, while Authentik provides the web-facing authentication layer and token issuance.  
+
+This approach can be directly replicated in production. Other identity providers (such as Keycloak) could substitute for Authentik, but the principle remains the same: keep FreeIPA as the authoritative store, and place a modern IdP in front to provide OIDC/OAuth-based authentication for applications.
+
+\medskip
+\noindent Once authentication and identity services are integrated, 
+the next step is to ensure that applications can interact 
+with persistent storage in a reliable and secure way. 
+We therefore examine how VirtualOrfeo incorporates object storage 
+to mirror the production environment.
+
+
+\subsection{Storage Integration in VirtualOrfeo} \label{sec:virtualorfeo-storage}
+
+Storage of experimental data is a major concern for our application, and 
+VirtualOrfeo replicates the production storage environment to a large extent. In 
+the real ORFEO facility, high-volume data (like images from microscopes) might 
+be stored on a distributed file system or an object storage service for 
+durability and scalability. In VirtualOrfeo, we deploy the \textbf{Ceph} storage 
+system to provide a multi-purpose storage backend. Ceph is a widely used 
+open-source distributed storage platform that can provide object storage, block 
+storage, and file system interfaces within a unified cluster 
+\parencite{Weil2006Ceph}. We focus on Ceph’s object storage interface, which is 
+provided by the \textbf{RADOS Gateway (RGW)} component. The RGW exposes a 
+RESTful API compatible with Amazon S3, meaning our application can interact with 
+it as if it were talking to AWS S3, but the data is stored on-premise in Ceph.
+
+\medskip
+
+In VirtualOrfeo, a small Ceph cluster is set up using additional VMs (for monitor 
+and OSD daemons). Once Ceph is running, an RGW daemon is deployed (in our case, 
+on one of the Ceph nodes, listening on a specific port and configured with a 
+default Ceph ``realm'' and ``zone'' for object storage). To integrate this with 
+Kubernetes, we created a Kubernetes Service and Ingress that points to the RGW:  
+
+\begin{itemize}
+	\item The \textbf{Service} of type \texttt{ClusterIP} has a backing Endpoints 
+	object that contains the static IP of the RGW (e.g., 192.168.132.90, the 
+	address of the VM running RGW) and the port (7480 for plain HTTP or 8080 with 
+	SSL termination). Essentially, this registers an external service inside 
+	Kubernetes.  
+	\item The \textbf{Ingress} for RGW uses the host \texttt{rgw.k3s.virtualorfeo.it} 
+	(or alternatively \texttt{s3.k3s.virtualorfeo.it} as configured in 
+	VirtualOrfeo’s Nginx proxy). We added annotations to allow large uploads 
+	(disabling body size limits and request buffering, since experimental data can 
+	be quite large). It routes all paths under that host to the RGW service. The 
+	ingress is secured with TLS using a certificate issued by the FreeIPA CA.  
+	\item This setup means that any application inside the cluster can access the 
+	RGW via the internal service DNS 
+	(\texttt{http://ceph-rgw.lame-fair.svc.cluster.local:7480}) or via the 
+	external URL \texttt{https://rgw.k3s.virtualorfeo.it}. Our Django application 
+	uses the external URL because it expects an S3 endpoint with valid TLS.  
+\end{itemize}
+
+\medskip
+
+As an alternative to Ceph RGW, VirtualOrfeo also provides the option of deploying 
+\textbf{MinIO}, a standalone open-source object storage server that is 
+S3-compatible. MinIO is easier to set up for simple tests (it can run as a 
+single container). Indeed, our overlay repository contains manifests for a MinIO 
+deployment in the cluster.  
+
+The Django application does not need to care whether the underlying storage is 
+Ceph or MinIO – it only sees the S3 API. This abstraction is powerful: it means 
+we can develop against MinIO locally, then switch to Ceph RGW in integration 
+tests, and eventually use the same code with an Amazon S3 bucket in production.
+
+\medskip
+
+Within the object store, our application creates and uses buckets to organize 
+data. The data model we follow (as described in Chapter~3) involves Projects, 
+Proposals, Samples, and Experiments. We reflect this hierarchy in the storage 
+layout:  
+
+\begin{itemize}
+	\item Data is partitioned by project: each top-level project 
+	(e.g., \texttt{NFFA\_DI}, \texttt{RIANA}) has a dedicated bucket.  
+	\item Within each project’s bucket, object keys (paths) encode the proposal, 
+	sample, and experiment.  
+	\item For example, a raw TIFF image for Experiment~\#123 of Sample~\#5 in 
+	Proposal~\texttt{P001} under project \texttt{NFFA\_DI} would be stored as:  
+	\begin{verbatim}
+		NFFA_DI/PROPOSAL-P001/SAMPLE-5/EXP-123/raw/imagename.tiff
+	\end{verbatim}
+\end{itemize}
+
+In this scheme, the bucket might be named \texttt{lamefair-data} or 
+\texttt{nffa-di-data}, and the directories (prefixes) group the data. The 
+application’s code (in the \texttt{pathing.py} and \texttt{s3.py} utilities) 
+handles constructing these S3 keys so users do not have to worry about the exact 
+paths.
+
+\medskip
+
+After an upload, the system generates a NeXus file (an HDF5-based structured data 
+file) containing metadata and possibly processed data. We store these NeXus files 
+alongside the raw data or in a parallel location. Common strategies include:  
+
+\begin{itemize}
+	\item storing NeXus files in a \texttt{processed/} subdirectory of the same 
+	experiment path,  
+	\item placing them in a separate bucket for easier access by portals, or  
+	\item using a ``mirroring'' strategy, where raw data remains in one bucket 
+	while NeXus files are copied to another.  
+\end{itemize}
+
+In VirtualOrfeo, we adopted a simple approach: NeXus files are written to the 
+same bucket with a distinct prefix (e.g., \texttt{nx/experiment\_123.nxs}). This 
+way, the data portal or UI can easily locate them.
+
+\medskip
+
+Using an open, self-describing format like NeXus for processed data aligns with 
+best practices in scientific data management, ensuring results are sharable and 
+standardized rather than proprietary \parencite{Koennecke2015NeXusFormat, 
+	Korir2024TenRecs}. NeXus (built on HDF5) can encapsulate not only the image data 
+but also relevant metadata (instrument settings, timestamps, sample identifiers, 
+etc.) in one file \parencite{Koennecke2015NeXusFormat}. This ensures that years 
+later, users still have a usable record of the experiment.  
+
+This focus on interoperability and reuse reflects the FAIR principles (Findable, 
+Accessible, Interoperable, Reusable). By having VirtualOrfeo’s storage mimic the 
+final layout, we verified that our application correctly places files and that 
+NeXus generation produces files compatible with external tools.
+
+\medskip
+
+To facilitate testing, we also set up some dummy buckets and data. VirtualOrfeo’s 
+Ceph RGW can be configured with an initial bucket structure or seeded with 
+example data (via Ansible scripts). This was useful for integration tests, such 
+as verifying that:  
+
+\begin{itemize}
+	\item listing objects shows the expected keys,  
+	\item the app detects when a bucket is empty versus containing experiments.  
+\end{itemize}
+
+\medskip
+
+In conclusion, VirtualOrfeo’s storage integration provided a realistic 
+S3-compatible endpoint. Our application could create buckets, put objects 
+(uploads), get objects (downloads), and list contents just as it would on a real 
+object store. Using Ceph RGW meant performance and concurrency were closer to a 
+production scenario than with a simple local filesystem. It also allowed us to 
+test failure modes (e.g., wrong credentials, unreachable store).  
+
+All of this contributes to confidence that the application will handle data 
+storage reliably when deployed to the HPC environment or any other S3-compatible 
+cloud storage.
+
+\medskip
+\noindent With authentication and storage available, the environment is ready 
+to host real applications. 
+The following subsection describes how a representative Django-based web service 
+is packaged and deployed on the VirtualOrfeo cluster.
+
+
+\subsection{Application Packaging and Deployment on K3s}
+
+To demonstrate how a web application can be deployed in the VirtualOrfeo cluster, 
+we use a representative \textbf{Django} application packaged and deployed with 
+\textbf{Helm}. The application is built into a container image and distributed 
+as a Helm \textbf{chart}, which bundles all Kubernetes manifest templates 
+(Deployments, Services, ConfigMaps, Secrets, etc.) along with configuration 
+values. This approach ensures that deployments are versioned, reproducible, and 
+portable across any Kubernetes cluster.
+
+\medskip
+
+In our repository, the Helm chart is maintained under \texttt{charts/lame-fair/}. 
+It defines the following Kubernetes resources, which are typical for deploying a 
+Django-based service:  
+
+\begin{itemize}
+	\item \textbf{Deployment of the web service:}  
+	Creates pods that each run two containers:  
+	\begin{itemize}
+		\item a container running Django (served by Gunicorn),  
+		\item an NGINX sidecar acting as a reverse proxy and serving static files.  
+	\end{itemize}  
+	This separation allows NGINX to handle static assets efficiently while 
+	Gunicorn processes dynamic requests. NGINX also ensures the application is 
+	exposed only on standard ports (80/443 through ingress).  
+	
+	\item \textbf{Deployment of a worker:}  
+	Many Django deployments rely on a background task queue (e.g.\ Redis Queue, 
+	Celery). To reflect this pattern, the chart defines a second Deployment 
+	running a worker container that processes queued jobs, keeping the main web 
+	service responsive.  
+	
+	\item \textbf{Redis instance:}  
+	A Redis server (via Bitnami’s sub-chart) is deployed as the queue backend for 
+	asynchronous tasks. It runs as a single pod with a PersistentVolume for 
+	durability.  
+	
+	\item \textbf{PostgreSQL database:}  
+	A PostgreSQL instance (via Bitnami’s chart) provides the relational database 
+	backend. The chart provisions credentials in a Kubernetes Secret and 
+	PersistentVolumes for storage. While single-node here, in production one would 
+	typically rely on a managed or replicated database.  
+	
+	\item \textbf{Jobs and hooks:}  
+	A Kubernetes Job runs Django’s database migrations on install or upgrade, 
+	ensuring the schema is synchronized with the models. This Job is triggered as 
+	a Helm hook.  
+	
+	\item \textbf{Ingress and Service:}  
+	An Ingress exposes the service at 
+	\texttt{lame-fair.k3s.virtualorfeo.it}, with traffic routed by the cluster’s 
+	NGINX ingress controller. Certificates are provisioned by cert-manager via the 
+	FreeIPA CA.  
+	
+	\item \textbf{Configurations:}  
+	Settings are supplied through a ConfigMap (for non-sensitive values) and a 
+	Secret (for sensitive values such as the Django \texttt{SECRET\_KEY}, OIDC 
+	client secrets, and database password).  
+\end{itemize}
+
+\medskip
+
+The container image for the Django application is built from a \texttt{Dockerfile} 
+and published to a container registry. It includes all dependencies 
+(\texttt{requirements.txt}), the application code, and pre-collected static 
+files. This image, combined with the Helm chart, provides a portable and 
+reproducible deployment unit.
+
+\medskip
+\noindent Application packaging, however, is only part of the deployment story. 
+Equally important is the secure and flexible management of configuration values 
+and secrets, which is handled through Kubernetes-native mechanisms.
+
+
+\subsection{Secrets and Configuration Management}
+
+Managing configuration and secrets is a critical part of deploying the application. In the VirtualOrfeo environment, the application requires a mix of configuration values: some are non-sensitive (e.g.\ URLs, feature flags), while others are highly sensitive (e.g.\ passwords, private keys, API secrets). Kubernetes provides native resources to handle both types: \textbf{ConfigMaps} for plain configuration and \textbf{Secrets} for sensitive values. Our deployment makes extensive use of both, ensuring that credentials remain secure and configuration stays flexible.
+
+\medskip
+
+At deployment time, we supply several categories of information to the application:
+
+\begin{itemize}
+	\item \textbf{Django settings:}  
+	Externalized into ConfigMaps rather than baked into the container image.  
+	Examples include:  
+	\begin{itemize}
+		\item whether the app runs in debug mode,  
+		\item the allowed hostnames,  
+		\item the OIDC callback URL and issuer URL (e.g.\ \texttt{AUTHENTIK\_SERVER\_URL=https://auth.k3s.virtualorfeo.it}).  
+	\end{itemize}  
+	These are set as environment variables (e.g.\ \texttt{DJANGO\_SETTINGS\_MODULE}, \texttt{DJANGO\_DEBUG}) via the Helm chart’s \texttt{configmap-env.yaml}.
+	
+	\item \textbf{Secrets for OIDC and database:}  
+	\begin{itemize}
+		\item OIDC Client ID and Client Secret for the application, generated by Authentik when the app was registered (see Section~\ref{sec:virtualorfeo-iam}).  
+		\item PostgreSQL credentials (username, password, host, database name), provisioned by the Helm sub-chart that deploys PostgreSQL. The app reads these values from a Kubernetes Secret (e.g.\ \texttt{pg-postgresql}).  
+	\end{itemize}  
+	
+	\item \textbf{S3 storage credentials and endpoints:}  
+	\begin{itemize}
+		\item Dedicated S3 user in Ceph RGW (e.g.\ ``django-app-user'') with access and secret keys.  
+		\item Keys stored in a Kubernetes Secret (\texttt{S3\_ACCESS\_KEY}, \texttt{S3\_SECRET\_KEY}).  
+		\item Endpoint URL (e.g.\ \texttt{https://rgw.k3s.virtualorfeo.it}), treated as non-sensitive and stored in a ConfigMap.  
+	\end{itemize}  
+	Within Django, these values configure the \texttt{boto3} client.  
+	
+	\item \textbf{Certificates and CAs:}  
+	\begin{itemize}
+		\item FreeIPA acts as the internal Certificate Authority.  
+		\item To avoid TLS errors when connecting to Authentik or RGW, the FreeIPA CA certificate (PEM) is mounted into the Django container.  
+		\item The app is configured (via \texttt{AWS\_CA\_BUNDLE} or Python SSL settings) to trust this certificate.  
+		\item The CA certificate itself is stored in a Kubernetes Secret (e.g.\ \texttt{ipa-root-ca}) and mounted at runtime.  
+	\end{itemize}  
+	
+	\item \textbf{Application secrets:}  
+	The Django \texttt{SECRET\_KEY}, used for cryptographic signing (sessions, CSRF tokens, etc.), is generated uniquely for each deployment and stored as a Kubernetes Secret.  
+\end{itemize}
+
+\medskip
+
+The main reason for using ConfigMaps and Secrets is to separate configuration from code,\footnote{The “Twelve-Factor App” methodology defines twelve best practices for building scalable web applications. Factor III (“Config”) states that configuration such as database credentials or API keys should not be hardcoded in the source but instead supplied at runtime via environment variables or equivalent mechanisms \parencite{Wiggins2011TwelveFactor}.} following best practices for cloud-native deployment.
+
+This avoids hardcoding environment-specific values into the image or repository and aligns with the 12-factor app principle. It also allows credentials to be rotated without changing the application deployment itself. For example, if an S3 key needs replacement, updating the Secret and restarting the pods is sufficient—no rebuild is required.
+
+\medskip
+
+A further consideration is the use of \textbf{scoped credentials}. The S3 access keys created for the application can be restricted to particular permissions:  
+
+\begin{itemize}
+	\item In production, one might allow access only to specific buckets or restrict destructive operations (e.g.\ allow \texttt{PUT} but not \texttt{DELETE}).  
+	\item In our VirtualOrfeo setup, we allowed full access to a defined namespace of buckets, but finer scoping is possible if needed.  
+\end{itemize}
+
+Similarly, OIDC tokens issued by Authentik can be scoped. By default, our app requests only minimal scopes (\texttt{openid}, \texttt{email}, \texttt{profile}) to retrieve basic identity information. Additional scopes (e.g.\ group membership) could be added, but limiting scopes to what is necessary is a good security practice.
+
+\medskip
+
+This principle of scoped access also applies at the application level:  
+
+\begin{itemize}
+	\item A frontend designed only for browsing data could use read-only S3 keys or tokens.  
+	\item Our current application handles both uploads and browsing, but a future read-only data portal could be configured with narrower permissions.  
+\end{itemize}
+
+\medskip
+
+In summary, the deployment relies on Kubernetes-native mechanisms for securely injecting configuration and secrets. By distinguishing clearly between sensitive and non-sensitive values, we lower the risk of leakage and make configuration easier to manage. Helm charts were written to ensure that secret values are never displayed in logs or upgrade diffs, following common cloud-native security practices.

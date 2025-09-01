@@ -1,0 +1,310 @@
+\chapter{ORFEO Infrastructure: Distributed Storage and Identity Services}\label{chap:infra}
+
+\section{ORFEO Data Center and Distributed Storage}
+
+\subsection{ORFEO Datacenter: Infrastructure and Physical Data Storage}
+
+ORFEO is a cutting-edge data center managed by the Laboratory of Data 
+Engineering (LADE) at Area Science Park. It is housed in a specialized container 
+and provides advanced computing and data services for scientific 
+research\parencite{ORFEO_Docs_Home,LADEPage}. 
+
+\medskip
+
+In terms of hardware, ORFEO offers:
+\begin{itemize}
+	\item high-performance computing nodes (including GPU-equipped servers 
+	and large-memory nodes up to 1.5\,TB RAM), 
+	\item interconnected with high-speed networks (\texttt{InfiniBand} 100\,Gb/s)\parencite{ORFEO_Docs_Computational}.
+\end{itemize}
+
+To support data-intensive workloads, ORFEO’s storage infrastructure delivers 
+over 5\,PB of raw storage capacity, implemented as a parallel distributed 
+filesystem. This storage is served to users via a \texttt{Ceph} cluster, which 
+combines:
+\begin{itemize}
+	\item high-speed flash storage tiers (\texttt{NVMe} and \texttt{SSD} drives), 
+	\item standard capacity tiers (\texttt{HDD} drives)\parencite{ORFEO_Docs_Storage,orfeo-changelog-2024}.
+\end{itemize}
+
+A long-term archival storage partition of more than 3\,PB is available for data 
+retention, and a tape library is also present for backups and cold 
+storage\parencite{ORFEO_Docs_Storage,orfeo-changelog-2024}. 
+
+\medskip
+
+In summary, ORFEO physically stores data across a large \texttt{Ceph} 
+distributed storage system augmented by dedicated archival appliances, ensuring 
+both high-performance access and reliable long-term preservation of research 
+data.
+
+\medskip
+
+From a physical perspective, the \texttt{Ceph} storage cluster underlying ORFEO 
+consists of numerous storage nodes (servers with many disks) acting together. 
+ORFEO’s shared filesystem is hosted on a \texttt{Ceph} cluster of 23 storage 
+nodes, providing roughly 4.8\,PiB of raw space across the 
+cluster\parencite{ORFEO_Docs_Storage,orfeo-changelog-2024}. 
+
+The \texttt{Ceph} cluster is configured with different tiers to meet varying 
+performance needs:
+\begin{itemize}
+	\item A “fast” pool of four \texttt{Ceph} nodes with \texttt{SSD}s (about 
+	279\,TiB raw capacity) for high-speed scratch storage.
+	\item 19 \texttt{Ceph} nodes with \texttt{HDD}s providing a larger capacity 
+	pool for standard storage (home directories and bulk scratch 
+	data)\parencite{ORFEO_Docs_Storage}.
+\end{itemize}
+
+In practice, user data is striped and replicated across many disks and servers: 
+\texttt{Ceph}’s distributed design writes pieces of each file (as objects) to 
+multiple nodes, protecting against hardware failures. Thanks to \texttt{Ceph}’s 
+redundancy (via replication or erasure coding), the data center can tolerate 
+disk or node failures without losing data\parencite{Ceph_RADOS,Ceph_Pools,Ceph_EC}. 
+
+The result is a highly reliable storage backbone: users see a single unified 
+filesystem, but underneath, their data blocks are physically spread across many 
+drives and machines in the ORFEO cluster.
+
+\medskip
+
+It’s worth noting how different research groups utilize ORFEO’s storage. All 
+LADE-managed projects and users have their data on the \texttt{Ceph}-based 
+filesystem by default. Each user gets:
+\begin{itemize}
+	\item a home directory (with quotas such as 200\,GB and 1\,million files 
+	enforced) on a \texttt{CephFS} volume backed by \texttt{SSD} storage 
+	(with triple replication for safety)\parencite{ORFEO_Docs_Storage}.
+	\item access to a shared scratch space on \texttt{Ceph}—a large 
+	high-capacity area on \texttt{HDD}-based storage for active analyses. This 
+	scratch is configured with an erasure-coded scheme (6+2 encoding, meaning 
+	data is split into 6 chunks plus 2 parity chunks) to maximize usable space 
+	while still tolerating failures\parencite{Ceph_EC,Ceph_RADOS}.
+	\item a per-user fast scratch area on \texttt{SSD}s (also replicated 3$\times$) 
+	for I/O-intensive tasks requiring faster throughput\parencite{Ceph_Pools}.
+\end{itemize}
+
+In contrast, the LAME laboratory (Microscopy lab) historically has stored its 
+data on local storage systems separate from ORFEO’s \texttt{Ceph} cluster. This 
+means LAME’s data hasn’t benefited from ORFEO’s centralized distributed storage. 
+
+\medskip
+
+A key motivation for our work is to enable transferring and integrating LAME’s 
+locally stored data into ORFEO, so that microscopy data can reside on the 
+\texttt{Ceph}-based infrastructure alongside the genomics and other datasets 
+managed by LADE. (The genomics lab, LAGE, is already set up to use ORFEO’s 
+storage, so we focus here on LADE and LAME integration.) 
+
+By moving LAME’s data into ORFEO, researchers will gain the advantages of 
+\texttt{Ceph}’s reliability, scalability, and unified access for all their 
+scientific data.
+
+
+\subsection{Ceph Filesystem in ORFEO (\texttt{CephFS})}
+
+\texttt{Ceph} is the primary storage technology underpinning ORFEO’s 
+filesystem\parencite{ORFEO_Docs_Storage}. \texttt{CephFS} (\texttt{Ceph} 
+Filesystem) is a \texttt{POSIX}-compliant distributed file system built on 
+\texttt{Ceph}’s object store (\texttt{RADOS})\parencite{CephFS}. 
+
+In simpler terms, \texttt{CephFS} allows all compute nodes in the cluster to 
+see a shared directory tree (“/orfeo/\ldots”) where user files and project data 
+reside, just like a network file system, but with no single server bottleneck. 
+Instead of storing files on a single disk or server, \texttt{CephFS} distributes 
+file data in objects across the cluster’s OSDs (Object Storage Daemons)—essentially 
+across many disks on many nodes—and a cluster of Metadata Servers (MDS) 
+coordinates the file system namespace and directory 
+operations\parencite{CephFS,Ceph_RADOS,RedHat_CephFS}. 
+
+This architecture provides high throughput and availability: clients (compute 
+nodes or user login nodes) directly read/write data to the storage nodes in 
+parallel, while metadata (filenames, directories, permissions) is handled by 
+dedicated MDS servers for efficient lookup\parencite{CephFS,RedHat_CephFS}. As a 
+result, \texttt{CephFS} can scale out linearly with the size of the cluster, 
+making it ideal for HPC scenarios like ORFEO where numerous users and jobs 
+concurrently access shared datasets\parencite{CephFS}.
+
+\medskip
+
+One of the strengths of \texttt{CephFS} in ORFEO is its built-in redundancy and 
+data management policies. \texttt{Ceph} transparently manages data replication 
+and/or erasure coding across the cluster, so users do not have to worry about 
+manually copying data to protect against failures\parencite{Ceph_Pools,Ceph_EC}. 
+
+For instance, as noted above, some \texttt{Ceph} pools on ORFEO keep three 
+replicas of each data block on different storage nodes (triple mirroring) for 
+important or hot data\parencite{Ceph_Pools}. Other pools use an erasure-coded 
+scheme (6+2), which breaks each file into 6 data chunks and 2 parity chunks 
+distributed to different nodes; any 6 of the 8 chunks are sufficient to recover 
+the file, giving fault tolerance with only $\sim$1.33$\times$ storage overhead 
+instead of 3$\times$\parencite{Ceph_EC,Ceph_RADOS}. 
+
+\texttt{Ceph} automatically handles re-balancing and healing: if a disk or node 
+fails, the system detects the loss and recreates missing chunks or copies on 
+healthy devices in the cluster. This self-healing design, along with capacity 
+scaling by simply adding more nodes or disks, makes \texttt{Ceph} a very robust 
+solution for a growing data center\parencite{Ceph_RADOS}. Moreover, 
+\texttt{CephFS} supports features like quotas on directories (e.g.\ enforcing 
+per-user storage limits) and snapshots, which are useful in a multi-user 
+research environment\parencite{ORFEO_Docs_Storage}. 
+
+All these capabilities mean that ORFEO’s \texttt{Ceph}-based filesystem can 
+simultaneously serve as home directories, scratch spaces, and project archives 
+for many users without performance bottlenecks or single points of failure.
+
+\medskip
+
+In ORFEO’s configuration, the \texttt{CephFS} is mounted under the 
+\texttt{/orfeo} directory on all cluster machines, providing a unified space for 
+data. As outlined earlier, this space is organized into subfolders like 
+\texttt{home}, \texttt{scratch}, \texttt{fast}, etc., each possibly backed by 
+different storage tiers\parencite{ORFEO_Docs_Storage}. 
+
+Users’ home directories (in \texttt{/orfeo/cephfs/home}) are intended for 
+personal files and configurations and have a fixed quota (e.g.\ 
+200\,GiB)\parencite{ORFEO_Docs_Storage}. The scratch areas (in 
+\texttt{/orfeo/cephfs/scratch}) are shared working spaces for active 
+computations, visible on all nodes and divided into project-specific subfolders; 
+these reside on high-capacity 10k\,RPM \texttt{HDD}s, and while they have no 
+strict quota, older files may be purged after a minimum retention period (e.g.\ 
+30 days) to free space\parencite{ORFEO_Docs_Storage}. 
+
+The fast area (accessible via \texttt{/orfeo/cephfs/fast}) is another shared 
+scratch intended for workloads needing faster I/O, stored on \texttt{SSD}s; 
+similarly un-quotaed, it’s managed with a policy to clear old data as 
+needed\parencite{ORFEO_Docs_Storage}. 
+
+Finally, for archival storage, ORFEO provides a Long-Term Storage (LTS) 
+separate from \texttt{CephFS}: this is implemented via a Dell PowerVault 
+\texttt{SAN} (Network Attached Storage using \texttt{NFSv4}) offering 
+$\sim$2.8\,PiB raw space, allocated in volumes per group/project for long-term 
+data retention\parencite{ORFEO_Docs_Storage}.
+
+\medskip
+
+In summary, \texttt{CephFS} handles the high-performance and working-storage 
+tiers (home, scratch, fast) for LADE users on ORFEO, while a traditional 
+\texttt{NAS} and tape handle archival storage. The key point is that every LADE 
+user’s active data partition is on \texttt{Ceph}—giving them the benefits of 
+distributed storage—whereas LAME users currently keep data on local storage 
+outside this system. 
+
+Bridging that gap is a goal of integrating LAME with ORFEO, allowing microscopy 
+data to be moved into \texttt{CephFS} where it can be easily shared and 
+processed in the HPC environment.
+
+
+\subsection{Ceph RADOS Gateway and the S3 API}
+
+In addition to providing file-system access through \texttt{CephFS}, the 
+\texttt{Ceph} storage platform also supports an object storage interface called 
+the RADOS Gateway (RGW)\parencite{Ceph_RGW_Overview}.
+
+\medskip
+
+To unpack this: \texttt{Ceph} is built on top of a distributed storage system 
+called Reliable Autonomic Distributed Object Store (RADOS), which handles the 
+actual storage of data across many servers and disks. The \texttt{RADOS Gateway} 
+is a service (a daemon called \texttt{radosgw}) that runs as an HTTP server. 
+Instead of presenting storage as files and directories, the gateway exposes a 
+web-based API—in other words, a network endpoint that applications can talk to 
+using standard internet protocols\parencite{Ceph_RGW_Overview,Ceph_RGW_S3}.
+
+\medskip
+
+The most important feature of the RADOS Gateway is that its interface is 
+designed to be compatible with the Amazon Simple Storage Service (Amazon S3) 
+API\parencite{Ceph_RGW_S3}. Amazon S3 is one of the earliest and most widely 
+adopted cloud storage services, introduced by Amazon Web Services in 2006. It 
+popularized the concept of “object storage,” where data is managed as discrete 
+units called objects rather than as files in a traditional hierarchical file 
+system. Each object consists of the raw data (for example, the contents of a 
+file) along with associated metadata (such as its size, creation date, or custom 
+tags). Objects are organized into logical containers called buckets. Access to 
+objects is performed through API calls sent over HTTP or HTTPS, such as “PUT” 
+to upload a file, “GET” to download it, or “DELETE” to remove it.
+
+\medskip
+
+By imitating this interface, the Ceph RADOS Gateway makes it possible for 
+applications and users to interact with Ceph’s storage as if they were 
+interacting with Amazon S3 itself\parencite{Ceph_RGW_S3,Ceph_RGW_Overview}. This 
+compatibility is powerful: it means that existing tools, libraries, and 
+workflows that already support Amazon S3 can be used directly with a Ceph 
+cluster, without modification. For example, common command-line utilities, 
+backup systems, scientific data management pipelines, or even web applications 
+can all speak the S3 protocol and therefore work seamlessly with Ceph when the 
+RADOS Gateway is deployed\parencite{Ceph_RGW_S3}.
+
+\medskip
+
+Internally, the RADOS Gateway does not bypass Ceph’s design. All objects that 
+arrive through the S3 interface are still stored within the underlying RADOS 
+cluster, just like the data written via CephFS\parencite{Ceph_RGW_Overview}. This 
+ensures the same level of redundancy, fault tolerance, and scalability. However, 
+the object storage model is different from a file system model: instead of 
+directories and file paths, users think in terms of buckets and object keys. The 
+gateway also maintains its own system of user accounts, credentials, and access 
+control rules, separate from Linux accounts on the cluster, which allows 
+external collaborators to interact with the storage securely without being given 
+direct access to the cluster’s internal 
+filesystem\parencite{Ceph_RGW_Overview,Ceph_RGW_S3}.
+
+\medskip
+
+The RADOS Gateway supports many features of Amazon S3, such as bucket creation, 
+object versioning, fine-grained access policies, and metadata 
+management\parencite{Ceph_RGW_S3}. Moreover, Ceph’s unified design means that 
+data stored through one interface can, in some cases, be accessed through 
+another: for example, data written via the S3 protocol could also be read using 
+OpenStack Swift (another popular object storage 
+protocol)\parencite{Ceph_RGW_Overview}. This interoperability highlights Ceph’s 
+flexibility as a storage backend.
+
+\medskip
+
+From the perspective of ORFEO, deploying a Ceph RADOS Gateway would allow 
+research groups and external partners to upload, download, and manage their data 
+through the familiar S3 protocol over standard web connections. For instance, a 
+laboratory could transfer large microscopy datasets to ORFEO simply by 
+targeting the S3 endpoint with existing tools, rather than having to mount a 
+network file system or rely on manual file 
+transfers\parencite{Ceph_RGW_S3}. This can greatly simplify data sharing and 
+integration, especially in collaborative environments where not all users have 
+direct logins to the HPC infrastructure.
+
+\medskip
+
+Looking ahead, this S3 compatibility also creates a natural integration point 
+with higher-level software. Many modern web frameworks and data platforms 
+(including the Django web framework, which we will consider later) offer 
+built-in or plug-in support for S3 storage backends. This means that a 
+Django-based web portal running on ORFEO could treat the Ceph cluster’s object 
+storage just like Amazon S3, using standard libraries to upload, retrieve, and 
+manage user files\parencite{Ceph_RGW_S3,Ceph_RGW_Overview}.
+
+\medskip
+
+In summary, the Ceph RADOS Gateway transforms the Ceph cluster into a private 
+cloud storage service by exposing an S3-compatible object storage 
+API\parencite{Ceph_RGW_S3,Ceph_RGW_Overview}. While CephFS provides traditional 
+file-based access within the cluster, RGW makes the same reliable storage 
+accessible externally through web protocols, enabling secure and scriptable data 
+exchange with collaborators, laboratories, and applications. This dual 
+approach—file system access for HPC workloads and object storage for external 
+and web-based workflows—broadens ORFEO’s utility as a central data platform.
+
+
+\section{Identity and Access Management (IAM): FreeIPA with Authentik}
+
+Identity and access management in ORFEO follows a directory\,$\rightarrow$\,identity-provider pattern. \textit{FreeIPA} serves as the authoritative directory for user identities and groups, while \textit{Authentik} acts as the OpenID Connect (OIDC) identity provider for web applications. In this arrangement, Authentik integrates with FreeIPA as a backend directory, synchronizing accounts and group memberships via LDAP. Authentik then issues OIDC tokens (ID/Access tokens) to client applications, embedding claims that can include group information for authorization\parencite{Authentik_Docs_LDAP,Authentik_Docs_OIDC,FreeIPA_Overview}.
+
+\subsection*{Roles and integration}
+Complementing FreeIPA on the web front, Authentik is deployed as ORFEO’s OIDC identity provider. Authentik is an open-source IdP platform that unifies identity needs into a single SSO service (comparable to alternatives like Okta or Keycloak)\parencite{Authentik_Home}. In the ORFEO architecture, Authentik is tightly integrated with FreeIPA as its user backend: it is configured to synchronize with FreeIPA’s LDAP directory so that user accounts and groups defined in FreeIPA are imported into Authentik’s identity store\parencite{Authentik_Docs_LDAP}. In effect, FreeIPA acts as the single source of truth for identities, while Authentik acts as an SSO broker on top of it\parencite{FreeIPA_Docs}.
+
+\subsection*{Token flow and claims}
+At a high level, a user attempting to access a protected web application (e.g., a Django portal) is redirected to Authentik for sign-in. Authentik validates the user against directory-backed identity records and, upon success, issues an OIDC ID token (a signed JSON Web Token, JWT) that may include claims about group memberships or roles. The application trusts Authentik (per its OIDC client configuration) and accepts the token, logging the user in without maintaining a separate user database\parencite{Authentik_Docs_OIDC}. This token-based SSO mechanism means a single set of credentials can be used across multiple services.
+
+\subsection*{Group-based authorization}
+A major benefit of this design is centralized authorization via group claims and role mapping. Because Authentik synchronizes group memberships from FreeIPA, it can include those groups as claims in the OIDC token; downstream applications can then map these claims to application-specific roles or permissions\parencite{Authentik_Docs_Claims,Authentik_Docs_LDAP}. Administrators manage membership once in FreeIPA, and the changes propagate consistently through Authentik-issued tokens to relying applications. In summary, FreeIPA handles core identity and group management, while Authentik provides a standards-based web SSO layer (OIDC/OAuth2) with claim-based authorization\parencite{FreeIPA_Docs,Authentik_Docs_OIDC}.
