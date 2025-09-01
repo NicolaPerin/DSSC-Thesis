@@ -1,33 +1,41 @@
-# New approaches in scientific computing: the design of a cloud-ready HPC infrastructure
+# New Approaches in Scientific Computing: The Design of a Cloud-Ready HPC Infrastructure
 
-## Index
+This repository contains the LaTeX sources for my master’s thesis.  
+The thesis presents the design and implementation of a data management platform integrated with a cloud-ready HPC environment, focusing on identity federation, object storage, asynchronous processing, and scientific data formats.
 
-**Abstracts:**
-- [Abstract - english](./front/Abstract_en.tex)
-- [Abstract - italiano](./front/Abstract_it.tex)
+---
 
-**Chapters:**
+## Structure
+
+**Front matter**
+- [Abstract (English)](./front/Abstract_en.tex)  
+- [Abstract (Italiano)](./front/Abstract_it.tex)  
 - [Introduction](./front/Introduction.tex)
-- [Chapter 1: 1](./main/Chapter1.tex)
-- [Chapter 2: 2](./main/Chapter2.tex)
-- [Chapter 3: 3](./main/Chapter3.tex)
-- [Chapter 4: 4](./main/Chapter4.tex)
+
+**Main chapters**
+- [Chapter 1](./main/Chapter1.tex) – Context: HPC and the shift toward cloud-native approaches.  
+- [Chapter 2](./main/Chapter2.tex) – Foundations: identity federation (Authentik, OIDC), object storage (S3, Ceph RGW, MinIO), and background processing (Redis Queue).  
+- [Chapter 3](./main/Chapter3.tex) – Infrastructure: deployment on VirtualOrfeo, a digital twin of the ORFEO HPC cluster.  
+- [Chapter 4](./main/Chapter4.tex) – Application design: Django platform for experiment management, presigned uploads, CORS configuration, dashboards, and APIs.  
+- [Chapter 5](./main/Chapter5.tex) – Deep dive into the application:  
+  - Domain model and data flow  
+  - Metadata ingestion and pathing  
+  - NeXus construction  
+  - Storage gateway and bucket strategy  
+  - Background jobs with Redis Queue  
+  - API and UI surfaces  
+  - Security model (OIDC claim-to-role mapping, permissions)  
+  - Performance and scalability considerations  
 - [Conclusion](./back/Conclusion.tex)
 
-**Appendices:**
-- [Appendix A: a](./back/Appendix1.tex)
+**Appendices**
+- [Appendix A](./back/Appendix1.tex)
 
 ---
 
 ## Compilation
 
-To compile the code, just run the [`./compile.sh`](./compile.sh) script.
-This requires `pdflatex` to be installed.
+To build the thesis PDF, run:
 
----
-
-## Credits
-
-The LaTeX template used in this work is an adaptation of the one found on the
-[university website](https://sites.units.it/carrato/didatt/info_laureandi/LaTeX/)
-created by Stefano Bianchi (2014) and edited by Tommaso Fonda (2023).
+```bash
+./compile.sh
