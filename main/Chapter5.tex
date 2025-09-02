@@ -1,174 +1,594 @@
 \chapter{Deep Dive into the Application}\label{chap:deep-dive-app}
 
-This chapter presents an in-depth, implementation-oriented analysis of the Django application for experimental data management. The system follows a layered architecture that separates domain rules, storage abstractions, background execution, and presentation. It integrates with an external identity provider (Authentik via OIDC), persists raw and derived artefacts to an S3-compatible object store (Ceph RGW/MinIO), and uses Redis Queue (RQ) for asynchronous processing. The following sections detail the model, data flows, metadata pipeline, NeXus construction path, storage gateway, background jobs, API/UI surfaces, the in-app security model, and the performance/scalability envelope.
+This chapter gives a detailed, implementation-focused look at the Django application for experimental data management. 
+The system is built with a layered architecture that separates business rules, storage access, background processing, and presentation. 
+It connects to an external identity provider (Authentik via OIDC), stores both raw and derived data in an S3-compatible object store (Ceph RGW/MinIO), 
+and uses Redis Queue (RQ) for asynchronous tasks.
+The following sections describe the data model, information flows, metadata handling, NeXus file construction, storage gateway, 
+background jobs, API and user interface, the in-app security model, and performance and scalability aspects.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Domain model and data flow}\label{sec:domain-dataflow}
 
 \paragraph{Entities.}
-The core data model comprises four first-class entities:
+The application organises information into four main building blocks, each represented by a Django model:
+
 \begin{itemize}
-	\item \textbf{Project} (e.g.\ RIANA, NFFA\_DI): top-level namespace; immutable \texttt{name} with a derived \texttt{slug} (normalized via a local \texttt{slugify} helper).
+	\item \textbf{Project}: this is the top-level container, for example \emph{NFFA\_DI}. 
+	Each project has a human-readable \texttt{name} and a machine-friendly \texttt{slug} 
+	(a simplified version of the name, produced automatically by a local \texttt{slugify} helper). 
+	The slug is guaranteed to be unique so that it can safely be used in URLs and bucket names.
 	
-	\item \textbf{Proposal}: belongs to a \textbf{Project}, uniquely identified by the pair (\texttt{project}, \texttt{number}), with fields \texttt{pi\_name}, \texttt{date}, \texttt{description}, and \texttt{created\_by}. Each Proposal owns one S3 bucket name (\texttt{bucket}, unique and non-editable) that is deterministically generated on first save as \texttt{<prefix>+project.slug-number-sha1[:8]}.
+	\item \textbf{Proposal}: a proposal belongs to exactly one project and is uniquely identified by the pair 
+	(\texttt{project}, \texttt{number}). In addition to the proposal number, it stores information such as the 
+	principal investigator (\texttt{pi\_name}), the proposal date, a free-text \texttt{description}, and the user who created it. 
+	Each proposal also owns exactly one S3 bucket (\texttt{bucket}) where its raw data is stored. 
+	This bucket name is created automatically the first time the proposal is saved: 
+	it combines the project slug and proposal number, and adds an 8-character SHA-1 hash for uniqueness, 
+	prefixed with \texttt{lame-raw-} (or another prefix from settings).
 	
-	\item \textbf{Sample}: belongs to a \textbf{Proposal}; unique on (\texttt{proposal}, \texttt{slug}), where \texttt{slug} derives from \texttt{name}. Optional descriptive fields (\texttt{identifier}, \texttt{preparation\_date}, \texttt{atom\_types}, \texttt{physical\_form}) are accepted and written into README artefacts.
+	\item \textbf{Sample}: a sample belongs to one proposal and is uniquely identified by the pair 
+	(\texttt{proposal}, \texttt{slug}). The slug is derived from the sample’s \texttt{name}. 
+	Samples may also carry optional descriptive fields such as an external \texttt{identifier}, 
+	a \texttt{preparation\_date}, the list of \texttt{atom\_types}, and a description of the \texttt{physical\_form}. 
+	These optional details are written into README files to keep them close to the data.
 	
-	\item \textbf{Experiment}: belongs to a \textbf{Sample}; unique on (\texttt{sample}, \texttt{slug}), with optional \texttt{description} and start-time metadata.
+	\item \textbf{Experiment}: an experiment belongs to one sample and is uniquely identified by the pair 
+	(\texttt{sample}, \texttt{slug}). It can have a free-text \texttt{description} and optional start-time metadata. 
+	Experiments group together the actual measurement files uploaded by users.
 \end{itemize}
 
-Uniqueness and referential integrity constraints are enforced at the ORM level (model \texttt{Meta} constraints and \texttt{unique\_together}). The domain orchestration functions in \texttt{domain/commands.py} (\texttt{create\_proposal}, \texttt{create\_sample}, \texttt{create\_experiment}) encapsulate transactional creation of rows, idempotent bucket provisioning, and side-effects such as README materialization.
+The database enforces these uniqueness rules through Django’s \texttt{Meta} constraints (\texttt{UniqueConstraint} or 
+\texttt{unique\_together}), which prevents accidental duplication.  
 
-\paragraph{Lifecycle and flow.}
-The normative lifecycle is:
+\paragraph{Domain commands.}
+To create these entities, the application does not call the models directly.  
+Instead, it uses command functions in \texttt{domain/commands.py}, such as \texttt{create\_proposal}, 
+\texttt{create\_sample}, and \texttt{create\_experiment}.  
+These commands wrap several steps into one unit of work:
 
 \begin{enumerate}
-	\item \textbf{Creation via forms or API.} HTMX modals (\texttt{view\_modals.py}) call domain commands to create entities. On success, the modal returns \texttt{204 No Content} with an HTMX trigger to refresh panes; on validation errors, the modal re-renders with a single aggregated error block (no 4xx).
-	
-	\item \textbf{README materialization.} Immediately after each create, a README is written to object storage through the storage gateway: \texttt{<proposal\_prefix>/README.txt}, \texttt{<sample\_prefix>/README.txt}, and \texttt{<experiment\_prefix>/README.txt}. Bodies are produced by \texttt{services/readme.py}. This approach makes per-entity metadata co-resident with data.
-	
-	\item \textbf{Measurement registration and raw upload.} A user selects the target (\texttt{Proposal}, \texttt{Sample}, \texttt{Experiment}) and uploads raw files directly from the browser to S3 via presigned PUT (generated by \texttt{/s3\_presign}). The browser submits the uploaded S3 keys and minimal metadata (\texttt{pair}, \texttt{user\_name}, \texttt{meas\_desc}) to \texttt{register\_measurement()}.
-	
-	\item \textbf{Measurement README and background jobs.} \texttt{register\_measurement()} writes a measurement-level README next to the files and enqueues background jobs (checksum computation for every uploaded key; NeXus conversion for eligible TIFF keys). Buckets for both RAW and mirroring use cases are ensured to exist.
-	
-	\item \textbf{Mirroring to derived buckets.} The app computes a mirrored bucket name via \texttt{mirror\_bucket\_for()} and ensures its creation so that derived artefacts (e.g.\ NeXus) can be published in a separate, discoverable namespace. The \texttt{/ofed/} view shows this mirrored perspective.
+	\item \textbf{Friendly validation}: before writing, they check if an entity with the same identifiers already exists, 
+	and if so, raise a \texttt{ValidationError} with a clear message (avoiding generic database errors).
+	\item \textbf{Safe database write}: the actual insert happens inside a transaction. 
+	If two requests collide, the code re-checks after catching an \texttt{IntegrityError} 
+	so that the user still gets a meaningful error message instead of a crash.
+	\item \textbf{Bucket provisioning}: when a proposal is created, the corresponding bucket is created (or confirmed to exist) 
+	using \texttt{create\_bucket}. Calling this every time is safe, because the operation does nothing if the bucket already exists.
+	\item \textbf{README writing}: immediately after creation, a README file is generated with the entity’s metadata 
+	(e.g.\ project name, proposal number, sample identifier, experiment start time) and written to object storage at a standard path 
+	such as \texttt{<proposal\_prefix>/README.txt}, \texttt{<sample\_prefix>/README.txt}, or \texttt{<experiment\_prefix>/README.txt}.
 \end{enumerate}
 
-\paragraph{Invariants and failure handling.}
-Domain commands use early reads for friendly validation and wrap writes in atomic transactions; collisions race-safe fall back to uniqueness rechecks. Storage-side provisioning (\texttt{create\_bucket}) is idempotent. Background checksum updates use \texttt{update\_or\_create} to be idempotent under retries.
+In this way, each creation command leaves both the database and the storage layer in sync:  
+a new row is added to the relational database, the bucket (if any) is guaranteed to exist, and a README appears in storage 
+so that anyone browsing raw data can also see the associated metadata.
+
+
+\paragraph{Lifecycle and flow.}
+The typical sequence of actions is:
+
+\begin{enumerate}
+	\item \textbf{Creation via forms or API.} Users create projects, proposals, samples, or experiments through HTMX modals 
+	(\texttt{view\_modals.py}) or the REST API. The modals call the domain commands. 
+	On success, the server replies with \texttt{204 No Content} and triggers a refresh in the browser. 
+	If validation fails, the modal is re-rendered with a single error block, instead of returning a generic HTTP error.
+	
+	\item \textbf{README writing.} Right after each entity is created, a README file is written into object storage through the storage gateway. 
+	The path is predictable (\texttt{<proposal\_prefix>/README.txt}, \texttt{<sample\_prefix>/README.txt}, 
+	\texttt{<experiment\_prefix>/README.txt}), and the body is generated by \texttt{services/readme.py}. 
+	This way, descriptive metadata always sits next to the raw data.
+	
+	\item \textbf{Measurement registration and raw upload.} 
+	To upload data, a user chooses the target proposal, sample, and experiment. 
+	The browser then uploads the raw files directly to S3 using presigned PUT URLs from \texttt{/s3\_presign}. 
+	Once the upload finishes, the browser tells the backend which S3 keys were written, together with minimal metadata 
+	such as the instrument pair, user name, and a short description. This is handled by \texttt{register\_measurement()}.
+	
+	\item \textbf{Measurement README and background jobs.} 
+	\texttt{register\_measurement()} creates a measurement-level README next to the uploaded files. 
+	It also schedules background jobs: one to compute a checksum for every uploaded file, and another to convert TIFFs into NeXus 
+	if the instrument pair supports it. The code makes sure that the needed buckets (RAW and mirror) exist before writing.
+	
+	\item \textbf{Mirroring to derived buckets.} 
+	The system derives the name of a “mirror” bucket using \texttt{mirror\_bucket\_for()} 
+	and creates it if it does not exist. Derived artefacts such as NeXus files are uploaded here, 
+	keeping them separate from raw data. The \texttt{/ofed/} view lets users browse this mirrored namespace.
+\end{enumerate}
+
+\paragraph{Consistency and error handling.}
+Domain commands always validate inputs before writing, so users get clear error messages instead of database errors.  
+All writes run inside database transactions to avoid partial updates.  
+If two users try to create the same entity at the same time, the code re-checks uniqueness after catching an integrity error.  
+Creating buckets is always safe to call multiple times, because the storage layer ignores duplicates.  
+Background jobs that compute checksums use \texttt{update\_or\_create}, so retries simply update the existing row rather than causing conflicts.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Metadata path}\label{sec:metadata-path}
 
 \paragraph{TIFF ingestion.}
-Raw microscopy outputs are commonly TIFFs. Upon upload, only keys are persisted synchronously; content processing is deferred to workers. TIFF reading is performed in builder services (see \S\ref{sec:nexus-construction}). For streaming paths, the app uses S3’s \texttt{StreamingBody} to avoid memory blow-ups; chunk size defaults (8–16,MiB) are set in checksum and ZIP streaming code.
+Most raw microscope outputs arrive as TIFF files. When a user uploads them, the system only stores the object keys immediately; 
+the heavy work of reading the files is left to background workers. 
+TIFF parsing happens inside the builder services (see \S\ref{sec:nexus-construction}). 
+For large files, the app relies on S3’s \texttt{StreamingBody} so data can be read in chunks instead of all at once. 
+Typical chunk sizes are 8–16\,MiB, which are also used in checksum calculation and ZIP streaming to avoid memory spikes.
 
 \paragraph{Instrument metadata extraction and mapping.}
-To decouple instrument idiosyncrasies from NeXus semantics, JSON mapping files under \texttt{experiment\_manager/data/} (e.g.\ \texttt{ED\_mapping.json}, \texttt{TVIPS\_mapping.json}) define per-pair field correspondences. The selected pair (instrument\_detector) is carried from the UI (\texttt{PAIRS} in \texttt{views.py}) through the \texttt{register\_measurement()} call and ultimately into builder orchestration.
+Each instrument family writes metadata into TIFF headers in its own way. 
+To avoid hard-coding these differences in the code, the system uses JSON mapping files stored under \texttt{experiment\_manager/data/} 
+(for example \texttt{ED\_mapping.json}, \texttt{TVIPS\_mapping.json}). 
+These files describe how to translate instrument-specific keys into NeXus fields. 
+The chosen instrument pair (instrument + detector) is passed from the UI (\texttt{PAIRS} in \texttt{views.py}) 
+through the \texttt{register\_measurement()} call and finally into the builder.
 
 \paragraph{Translation to NXem concepts.}
-The NXem application definition (NeXus for electron microscopy) expects a standardized hierarchy (entry/instrument/detector/sample, with semantic fields for pixel sizes, accelerating voltage, camera length, dwell time, etc.). The mapping layer translates extracted TIFF tags and accompanying metadata into this semantic schema. Practically:
+The NXem definition (NeXus for electron microscopy) expects a common structure: 
+an entry node with subgroups for instrument, detector, and sample, each containing well-known fields 
+such as pixel size, accelerating voltage, camera length, and dwell time. 
+The mapping layer is responsible for filling this structure by translating the raw metadata. Concretely:
 
 \begin{itemize}
-	\item \emph{Source fields}: TIFF tags (ImageDescription, XResolution/YResolution, Software), sidecar text from Measurement README, and form inputs (operator, description).
-	\item \emph{Mapping}: JSON selects source keys (including regex or path expressions in \texttt{ImageDescription}) and yields destination NeXus paths (e.g.\ \texttt{/entry/instrument/detector/exposure\_time}).
-	\item \emph{Normalization}: unit coercion (s to ms, nm to m), type casting, and defaults when missing.
+	\item \emph{Source fields}: information pulled from TIFF tags (e.g.\ \texttt{ImageDescription}, \texttt{XResolution}, \texttt{YResolution}, \texttt{Software}), 
+	text written into measurement README files, and extra form inputs like operator or description.
+	\item \emph{Mapping}: each JSON file matches these source keys (sometimes with path expressions inside \texttt{ImageDescription}) 
+	to target NeXus paths (for example \texttt{/entry/instrument/detector/exposure\_time}).
+	\item \emph{Normalization}: values can be converted to consistent units (e.g.\ seconds instead of milliseconds, metres instead of nanometres), 
+	cast to the right data type, and filled with sensible defaults if missing.
 \end{itemize}
 
-This arrangement localizes pair-specific complexity in data files, keeping the builder logic generic and testable.
+By moving the instrument-specific rules into data files, the builder code stays simple, reusable, and easy to test.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{NeXus construction}\label{sec:nexus-construction}
 
-\paragraph{Builders and orchestration modules.}
-The construction path splits into:
+\paragraph{Responsibilities and split.}
+The NeXus build process separates the code that \emph{creates} a NeXus file 
+from the code that decides \emph{where and when} it should be stored:
+
 \begin{itemize}
-	\item \texttt{services/nexus\_builders.py}: low-level writers for \texttt{.nxs} that accept already mapped/normalized metadata and the raw TIFF stream; responsible for producing a valid HDF5/NXem tree.
-	\item \texttt{services/nexus.py}: orchestration that decides target locations (RAW vs.\ mirrored buckets), resolves output keys, and wraps storage interactions; provides \texttt{build\_and\_upload\_nexus(...)} and helper utilities like \texttt{mirror\_bucket\_for(...)}.
+	\item \path{services/nexus_builders.py}: contains the low-level writers that take one TIFF file and a JSON mapping, 
+	and turn them into a valid NXem tree (backed by HDF5). 
+	The main functions are \path{build_nexus_from_tiff_TEM_ED(...)} and \path{build_nexus_from_tiff_TVIPS(...)}.
+	
+	\item \path{services/nexus.py}: handles the orchestration around storage. 
+	It chooses the right builder for the selected instrument pair, finds or creates the mirror bucket, 
+	manages temporary files, and uploads the finished \path{.nxs}. 
+	Its main entry point is \path{build_and_upload_nexus(...)}.
 \end{itemize}
 
-\paragraph{Idempotency and deduplication.}
-Workers enqueue with a stable \texttt{job\_id} derived from (\texttt{pair}, \texttt{bucket}, \texttt{key}); a sanitized slug avoids Redis key pathologies. Before enqueueing, the queue is probed (\texttt{fetch\_job}) to skip duplicates. On the storage side, builders deterministically produce a destination key (e.g.\ under an \texttt{nx/} or \texttt{processed/} prefix) so re-runs overwrite the same object (or are guarded by ETag checks) rather than proliferating variants.
+\paragraph{Common scaffold (writer core).}
+Both builders share a common function \path{_build_scaffold(...)} that sets up the basic NeXus file. 
+It runs through the following steps:
 
-\paragraph{Validation.}
-Builder steps include:
 \begin{enumerate}
-	\item Schema completeness checks after mapping (required NXem fields present, with sensible defaults otherwise).
-	\item TIFF data sanity (dimensions, dtype) prior to embedding or linking.
-	\item Post-write verification: open the produced HDF5 and probe a minimal set of nodes/attributes to confirm structural validity.
+	\item \textbf{Read and flatten metadata.} The first TIFF page is opened with \path{tifffile}. 
+	All tags are flattened into a single dictionary with dot-separated keys. 
+	If a string tag contains embedded JSON (for example TVIPS puts a JSON block inside \path{ImageDescription}), 
+	it is parsed, flattened, and merged. Lists are indexed with keys like \path{foo[0].bar}.
+	
+	\item \textbf{Load mapping file.} A JSON mapping file (for example \path{ED_mapping.json} or \path{TVIPS_mapping.json}) 
+	is read into a dictionary of \path{source_key -> nexus_dotted_path}. 
+	Both \path{/} and \path{.} are accepted as separators in the paths.
+	
+	\item \textbf{Create root and entry.} An \path{NXroot} is created with the output file name. 
+	Inside it, an \path{NXentry} is added and marked with \path{definition="NXem"}. 
+	Group names use uppercase or explicit naming to satisfy NeXus validators.
+	
+	\item \textbf{Add sample block.} A required \path{SAMPLE} group (\path{NXsample}) is created with default values: 
+	\path{name="UNKNOWN_SAMPLE"}, \path{identifier_sample="unknown_id"}, \path{physical_form="bulk"}, 
+	and a boolean flag \path{is_simulation}. 
+	If extra fields from the README forms are provided (see \S\ref{sec:metadata-path}), they replace the defaults: 
+	\path{sample_identifier}, \path{preparation_date} (normalized to full ISO date-time), 
+	\path{atom_types}, and \path{physical_form}.
+	
+	\item \textbf{Add coordinate system.} A \path{NXcoordinate_system} group called \path{coordinate_system_1} 
+	is attached with fixed values: \path{type=cartesian}, \path{handedness=right}, \path{origin=front_top_left}.
+	
+	\item \textbf{Apply mapping.} For each flattened TIFF key found in the mapping, the corresponding NeXus path is created. 
+	Intermediate groups are added as needed, and leaf values are stored as \path{NXfield(val)} without conversion.
+	
+	\item \textbf{Normalize start time.} If the mapping produced separate fields \path{start_time_date} and \path{start_time_time}, 
+	they are combined into a single ISO8601 \path{start_time}. 
+	If no start time is present at all, the default \path{1970-01-01T00:00:00Z} is used.
+	
+	\item \textbf{Embed image data.} The image is read with \path{tifffile.imread} 
+	and stored under \path{image_2d} as an \path{NXdata} group with \path{signal="data"}.
+	
+	\item \textbf{Write extras and header dump.} Any extra fields not placed under \path{SAMPLE} are written at the \path{NXentry} level. 
+	If a header dictionary is given, it is saved as a JSON \path{NXnote} called \path{hdr_metadata}.
 \end{enumerate}
 
-\paragraph{File structure and checks.}
-Resulting \texttt{.nxs} files follow:
+\paragraph{Instrument-specific population.}
+After the scaffold, a small \emph{population} step adds instrument-facing structure in a uniform way. The builder selects a pair-specific helper from the registry and uses it to (i) ensure the expected NXem layout exists and (ii) attach common instrument nodes. Concretely, the helper:
 \begin{itemize}
-	\item \texttt{/entry} with \texttt{NXentry} class and experiment description, timestamps, and operator.
-	\item \texttt{/entry/instrument} subtree with \texttt{NXinstrument}, including \texttt{NXdetector} attributes for camera metadata.
-	\item \texttt{/entry/sample} for sample descriptors captured from domain entities and README.
-	\item \texttt{/entry/data} linking datasets to detector frames; axes and units defined for downstream tools.
+	\item guarantees the presence of an events branch \path{NXentry/measurement/events/event_data} with \path{NX_class=NXevent_data_em};
+	\item creates an \path{instrument} subtree (\path{NXinstrument_em}) and, where relevant, children such as \path{ebeam_column} (\path{NXebeam_column} with \path{electron_source} \path{NXsource} and \path{filter} \path{NXfilter}), \path{detector} (\path{NXdetector}), and \path{stage} (\path{NXmanipulator});
+	\item fills missing fields with neutral defaults (e.g., \path{"unknown"} for strings, numeric zeros for stage axes) using create-if-missing semantics, so values coming from the mapping or the caller are never overwritten;
+	\item optionally adds a lightweight microscope-identity branch under \path{NXentry/measurement/instrument} (e.g., name, location, vendor/model/serial\_number).
 \end{itemize}
-A SHA-256 digest is computed for original raw files (see \S\ref{sec:background-tasks}); optional digests for \texttt{.nxs} outputs can be added to ensure end-to-end integrity.
+Acquisition-specific quantities (such as exposure time, pixel size, beam voltage, trigger mode) are intentionally supplied by the JSON mapping rather than hard-coded here. Adding support for a new instrument means contributing a new population helper and its mapping file; the scaffold and orchestration remain unchanged.
+
+\paragraph{Mapping mechanics (example).}
+Mappings reference \emph{flattened} TIFF metadata keys on the left, and dotted NeXus paths on the right. A (shortened) TVIPS example:
+\begin{verbatim}
+	ImageDescription.camera.start_time
+	-> NXentry.measurement.events.NXevent_data_em.start_time
+	ImageDescription.camera.exposure_time
+	-> NXentry.measurement.events.NXevent_data_em.instrument.NXdetector.exposure_time
+	ImageDescription.camera.pixel_size
+	-> NXentry.measurement.events.NXevent_data_em.instrument.NXdetector.x_pixel_size
+	ImageDescription.stage.x
+	-> NXentry.measurement.events.NXevent_data_em.instrument.stage.x_position
+	ImageDescription.electron_gun.voltage
+	-> NXentry.measurement.events.NXevent_data_em.instrument.ebeam_column
+	.electron_source.voltage
+	ImageDescription.camera.simplon_parameters.trigger_mode
+	-> NXentry.measurement.events.NXevent_data_em.instrument.NXdetector
+	.simplon_parameters.trigger_mode
+	ImageDescription.repo_id
+	-> NXentry.experiment_identifier
+\end{verbatim}
+\noindent Paths are created on demand; where the code knows the NeXus class for a node (e.g.\ \path{NXdetector}, \path{NXebeam_column}), it stamps \path{NX_class} accordingly.
+
+\paragraph{What the writer deliberately \emph{does not} do (yet).}
+The current implementation \emph{does not} convert units, change data types, or check the full schema beyond combining the start time and making sure core groups exist. Values are written \emph{as they are} from the flattened metadata. This shifts complexity into the mapping files and keeps the writer straightforward. Section~\ref{sec:nexus-construction-validation-future} describes planned improvements.
+
+\paragraph{Orchestration and publishing.}
+The function \path{build_and_upload_nexus(...)} manages the full flow:
+
+\begin{enumerate}
+	\item \textbf{Pair registry.} A fixed registry maps a UI \path{pair} (e.g.\ \path{TEM_JEOL_F200_TVIPS}) to a builder function and mapping file. Unregistered pairs or missing mapping files are logged and skipped.
+	
+	\item \textbf{Mirror-bucket resolution.} The destination (derived) bucket is computed by rewriting the configured RAW prefix (e.g.\ \path{lame-raw-} $\to$ \path{lame-ofed-}); bucket creation is attempted safely.
+	
+	\item \textbf{Repeat-safe existence check.} If an object with the final \path{.nxs} key already exists in the mirror bucket, the job exits without changes.
+	
+	\item \textbf{Upload race-avoidance.} To avoid conflicts with just-written objects, the code polls \path{HeadObject} with a short timeout/backoff. If the low-level client is unavailable, it briefly sleeps instead.
+	
+	\item \textbf{Local build.} The RAW TIFF is downloaded to a temp file; \emph{extra fields} are collected by reading and parsing the per-sample and per-experiment README files (see \S\ref{sec:metadata-path}). The selected builder produces a temp \path{.nxs}.
+	
+	\item \textbf{Publish and clean up.} The \path{.nxs} is uploaded to the mirror bucket under the same key path (extension changed). Temp files are cleaned in a \path{finally} block. All steps are wrapped in broad exception handling with structured logging; failures return \path{None} so the queue can retry if needed.
+\end{enumerate}
+
+\paragraph{Resulting file layout (as written).}
+The produced tree reflects the code’s naming and hierarchy:
+\begin{itemize}
+	\item \path{/NXentry} (\path{NXentry}) with \path{definition="NXem"}, \path{start_time}, and optional \path{experiment_identifier}; the sample is mounted at \path{/NXentry/SAMPLE} (\path{NXsample}).
+	\item \path{/NXentry/coordinate_system_1} (\path{NXcoordinate_system}).
+	\item \path{/NXentry/measurement/events/event_data} (\path{NXevent_data_em}) with \path{instrument} (\path{NXinstrument_em}) including \path{NXdetector}, \path{NXebeam_column} (\path{NXsource}, \path{NXfilter}), and \path{NXmanipulator} stage.
+	\item \path{/NXentry/measurement/instrument} (\path{NXinstrument_em}) as a static identity branch.
+	\item \path{/NXentry/image_2d} (\path{NXdata}) with the TIFF raster attached as \path{data} and declared \path{signal}.
+	\item Optional \path{/NXentry/hdr_metadata} (\path{NXnote}) with JSON-serialized headers.
+\end{itemize}
+\noindent Group names like \path{NXentry} and \path{SAMPLE} are capitalised/explicit rather than the conventional \path{entry}/\path{sample}; this matches the writer and avoids validator warnings in our environment.
+
+\paragraph{Operational characteristics.}
+Builders run entirely in-process and load the full TIFF into memory via \path{tifffile.imread}; this is acceptable for current file sizes. For very large frame stacks, the API can be extended to use memory-mapped reads or external links.
+
+\paragraph{Limitations and planned validation}\label{sec:nexus-construction-validation-future}
+The following checks are \emph{not} yet implemented and are planned:
+\begin{itemize}
+	\item \textbf{Schema validation:} verify required NXem fields, classes, and attributes post-write (e.g.\ via \path{nexusformat} traversal or \path{punx} validation hooks).
+	\item \textbf{Unit/dtype normalization:} perform coercion at write-time (e.g.\ ms$\to$s, nm$\to$m) based on per-key policies in the mapping.
+	\item \textbf{Axes semantics:} annotate \path{NXdata} with axes and units when known; link to detector geometry if provided.
+	\item \textbf{Multi-page TIFFs:} support frame stacks with an explicit \path{signal} dimension and timebase metadata.
+\end{itemize}
+
+\paragraph{Traceability and repeat-safety.}
+The target key is deterministically derived from the TIFF key by changing the extension to \path{.nxs}; re-runs overwrite the same object in the mirror bucket. Logs carry the pair, RAW and mirror locations, and mapping path. Combined with the checksum pipeline (\S\ref{sec:background-tasks}), this gives a clear and reproducible conversion trail.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Storage gateway}\label{sec:storage-gateway}
 
-\paragraph{Abstraction and contracts.}
-The app standardizes storage via a \texttt{StorageGateway} Protocol (\texttt{storage.py}) with methods for bucket lifecycle, object IO, and presigning (\texttt{presign\_get}, \texttt{presign\_put}). The default \texttt{\_BotoStorage} delegates to \texttt{services/s3.py}. A test-time in-memory gateway (\texttt{storage\_fake.py}) implements the same interface to decouple unit tests from S3.
+\paragraph{Why a gateway layer?}
+All files in the system --- whether raw microscope outputs or derived NeXus datasets --- live in an object store that speaks the Amazon S3 protocol. 
+In practice this means either Ceph RGW or MinIO. 
+While the Python library \texttt{boto3}\footnote{%
+	\texttt{boto3} is Amazon’s official Python SDK for S3 and related services; 
+	it provides functions for creating buckets, uploading objects, and generating presigned URLs.} 
+could be called directly from any part of the code, could be called directly from any part of the code, 
+the application instead defines a thin \emph{storage gateway} layer. 
+This layer hides S3-specific details behind a common interface, 
+so that the rest of the codebase only deals with a handful of simple methods 
+such as “create a bucket”, “list objects”, “upload”, “download”, 
+or “generate a presigned URL”.
 
-\paragraph{Key naming (\texttt{pathing.py}).}
-Canonical prefixes encode the domain hierarchy:
+This abstraction has two main benefits:  
+\begin{itemize}
+	\item It isolates S3 configuration (endpoints, credentials, and CORS rules\footnote{%
+		CORS, or Cross-Origin Resource Sharing, is explained in detail later in this section.}) in one place.  
+	\item It allows swapping in a fake, in-memory implementation during testing 
+	so that unit tests do not require a live S3 service.  
+\end{itemize}
+
+\paragraph{Gateway interface and implementations.}
+The gateway interface is declared in \texttt{storage.py} as a Python \texttt{Protocol} called \texttt{StorageGateway}.  
+It defines the expected methods:  
+\begin{itemize}
+	\item \texttt{create\_bucket(name)} to create a bucket if it does not exist.  
+	\item \texttt{list(bucket, prefix)} to list objects under a given prefix.  
+	\item \texttt{put(bucket, key, body)} to upload a new object.  
+	\item \texttt{get(bucket, key)} to fetch an object into memory.  
+	\item \texttt{presign\_get(...)} and \texttt{presign\_put(...)} to generate time-limited URLs for download and upload.  
+\end{itemize}
+
+The default implementation, called \texttt{\_BotoStorage}, forwards each call to helper functions in \texttt{services/s3.py}, which in turn use \texttt{boto3}.  
+For tests, \texttt{storage\_fake.py} provides \texttt{InMemoryGatewayImpl}, which stores bytes in a Python dictionary keyed by \texttt{bucket} and \texttt{key}. 
+This makes unit tests reproducible and independent of real storage.
+
+\paragraph{Bucket naming and strategy.}
+Each Proposal in the domain model owns one dedicated bucket.  
+The bucket name is derived deterministically from the Project slug and Proposal number, 
+plus an eight-character hash to avoid collisions.  
+For example:  
 \begin{center}
-	\texttt{<proposal\_prefix>(proposal)/README.txt}\
-	\texttt{<sample\_prefix>(sample)/README.txt}\
+	\texttt{lame-raw-nffa-42-a1b2c3d4}
+\end{center}
+
+This design has several advantages:  
+\begin{itemize}
+	\item Buckets clearly separate data between Proposals.  
+	\item Names are predictable and collision-resistant.  
+	\item Lifecycle management (e.g.\ deletion or access control) can be handled per bucket.  
+\end{itemize}
+
+The system also maintains \emph{mirror buckets} for derived data such as NeXus files.  
+A helper \texttt{mirror\_bucket\_for(...)} rewrites \texttt{lame-raw-*} into \texttt{lame-ofed-*}, 
+so the raw files and the processed results remain side by side but in separate namespaces.
+
+\paragraph{Key naming conventions.}
+Within each bucket, keys follow a structured prefix layout that reflects the domain hierarchy:  
+\begin{center}
+	\texttt{<proposal\_prefix>(proposal)/README.txt} \\
+	\texttt{<sample\_prefix>(sample)/README.txt} \\
 	\texttt{<experiment\_prefix>(experiment)/README.txt}
 \end{center}
-Measurement READMEs are placed adjacent to uploaded files (folder-local \texttt{README.txt}) to improve locality in browsing and auditability.
 
-\paragraph{Bucket strategy.}
-Per-proposal buckets isolate tenancy and simplify lifecycle management. Names are deterministic and collision-resistant (8-hex SHA-1 suffix). \texttt{create\_bucket} is idempotent and also applies bucket-level CORS rules. Mirrored buckets (e.g.\ OFED) derive from the RAW name (\texttt{mirror\_bucket\_for}) and are ensured ahead of publishing derived outputs.
+Raw measurements place a \texttt{README.txt} next to the uploaded files inside their folder.  
+This “local README” makes browsing easier: metadata is always co-located with the data it describes.
 
-\paragraph{Upload patterns (presigned PUT).}
-The browser obtains a presigned PUT URL from \texttt{/s3\_presign} by providing (\texttt{bucket}, \texttt{key}, \texttt{content\_type}). The backend uses boto3's SigV4 presigning and returns the URL together with the required headers. Uppy performs the PUT directly to S3/RGW. This keeps the Django process out of the hot path for large transfers, eliminating server memory pressure and Python GIL contention.
+\paragraph{Workflow and presigned URLs.}
+Large microscopy files can be tens or hundreds of gigabytes in size.  
+Routing these through the Django web process would overwhelm server memory and bandwidth.  
+Instead, the system uses \emph{presigned URLs}.  
+A presigned URL is a normal-looking web address that contains a cryptographic signature 
+granting permission to perform one specific action (\texttt{GET} or \texttt{PUT}) on one object, 
+for a limited time (usually one hour).  
 
-\paragraph{CORS (Cross-Origin Resource Sharing).}
-Since the frontend origin (e.g.\ \texttt{https://lame-fair.k3s.virtualorfeo.it}interacts with a distinct S3 endpoint, buckets must explicitly allow cross-origin requests. The app configures CORS at bucket creation with:
+The workflow looks like this:
+\begin{enumerate}
+	\item When a user wants to upload, the browser asks the backend at \texttt{/s3\_presign/} for a presigned \texttt{PUT} URL.  
+	\item The backend generates it using \texttt{boto3} with SigV4 signing\footnote{%
+		SigV4 is Amazon’s Signature Version~4 algorithm, the standard way of signing S3 requests 
+		so they can be securely authenticated without exposing long-term credentials.}, 
+	and also tells the browser which headers (such as \texttt{Content-Type}) must be sent.  
+	\item The browser (via the Uppy\footnote{Uppy is an open-source JavaScript file uploader with drag-and-drop, 
+		resumable uploads, and progress indicators: \url{https://uppy.io/}.} library) 
+	uploads the file directly to S3/RGW at 
+	
+	\texttt{https://rgw.k3s.virtualorfeo.it}.  
+	\item When a user wants to download, the same pattern applies: the backend generates a presigned \texttt{GET} URL, 
+	which the browser can fetch directly.  
+\end{enumerate}
+
+This way, Django remains in control of \emph{authorization} (who is allowed to upload/download what) 
+but does not handle the actual bytes.  
+It scales much better for large data.
+
+\paragraph{Browser constraints: CORS and preflight.}
+Because the storage endpoint is a different origin from the web app\footnote{The “origin” is the combination of scheme, host, and port.}, 
+browsers apply the same-origin policy, which blocks requests to other origins unless explicitly allowed.  
+\emph{Cross-Origin Resource Sharing (CORS)} is the standard mechanism to declare such allowances.  
+
+In practice, when the app creates a new bucket, it also applies a CORS policy with:  
 \begin{itemize}
-	\item \textbf{AllowedOrigins}: the single site origin (computed once from env/config).
-	\item \textbf{AllowedMethods}: {\texttt{GET, HEAD, PUT, POST, DELETE, OPTIONS}} to cover presigned PUT uploads, presigned GET downloads, listings, and multipart edge cases.
-	\item \textbf{AllowedHeaders}: wildcard and common auth/content headers (e.g.\ \texttt{authorization}, \texttt{content-type}, \texttt{x-amz-*}).
-	\item \textbf{ExposeHeaders}: \texttt{ETag}, request IDs for debugging.
-	\item \textbf{MaxAgeSeconds}: 3600 to reduce preflight churn.
+	\item \textbf{AllowedOrigins}: exactly the site origin, e.g.\ \texttt{https://lame-fair.k3s.virtualorfeo.it}.  
+	\item \textbf{AllowedMethods}: \texttt{GET}, \texttt{HEAD}, \texttt{PUT}, \texttt{POST}, \texttt{DELETE}, \texttt{OPTIONS}.  
+	\item \textbf{AllowedHeaders}: \texttt{*}, plus \texttt{authorization}, \texttt{content-type}, \texttt{x-amz-*}.  
+	\item \textbf{ExposeHeaders}: \texttt{ETag}, \texttt{x-amz-request-id}, \texttt{x-amz-id-2}.  
+	\item \textbf{MaxAgeSeconds}: 3600, so that the browser can cache the positive preflight result for one hour.  
 \end{itemize}
-A restrictive, origin-pinned configuration prevents third-party origins from reusing presigned URLs via the browser.
+
+Browsers enforce CORS in two steps:  
+\begin{enumerate}
+	\item For “non-simple” requests (e.g.\ PUT with custom headers), the browser first sends an \texttt{OPTIONS} preflight.  
+	\item If the bucket replies with headers matching the above policy, the browser proceeds with the actual upload or download.  
+\end{enumerate}
+
+If the policy is wrong or missing, the browser blocks the request \emph{before} it even reaches the application.  
+This is why bucket creation always refreshes the CORS rules.
 
 \paragraph{Retries and resiliency.}
-The S3 client config enables standard retry mode with limited attempts; \texttt{ensure\_bucket} tolerates 404/NoSuchBucket and re-applies CORS, ignoring RGW quirks (e.g.\ \texttt{MalformedXML} noise) where safe. Listings use paginators; downloads stream via \texttt{StreamingBody}. On the HTTP side, large prefix downloads are zipped on the fly with \texttt{zipstream-ng} and \texttt{StreamingHttpResponse} (16,MiB server-to-client buffers) to prevent memory spikes.
+The \texttt{boto3} client is configured with \texttt{max\_attempts=3} and \texttt{mode=standard}, 
+which provides limited automatic retries.  
+Functions like \texttt{create\_bucket} and \texttt{ensure\_bucket} handle corner cases where Ceph RGW 
+might respond with unusual errors such as \texttt{MalformedXML} during CORS updates.  
+Listings use paginators to scale to large numbers of objects.  
+Large downloads use \texttt{StreamingBody}, so data is processed chunk by chunk instead of loading everything in memory.  
+When the user downloads a whole folder, the app streams a ZIP archive on the fly with \texttt{zipstream-ng}, 
+so the server never holds the entire archive in RAM.
 
 \paragraph{Integrity checks.}
-For every uploaded key, a background worker computes a SHA-256 (\texttt{MeasurementFileChecksum} table) by streaming the object in fixed chunks. This provides reproducible integrity markers and supports later audit/comparison across mirrors.
+Whenever a new file is uploaded, the system schedules a background job to compute its 
+\textbf{SHA-256 checksum}\footnote{SHA-256 is part of the SHA-2 family of cryptographic hash functions, standardized by NIST; see \url{https://csrc.nist.gov/projects/hash-functions}.}.  
+A checksum is a short, fixed-length string of characters that uniquely represents the content of a file.  
+Even a one-bit change in the file will produce a completely different checksum.  
+
+The job reads the object from S3 in fixed-size chunks (so that even very large files can be handled without exhausting memory), 
+feeds the data into the SHA-256 algorithm, and records the resulting \emph{digest} (the fixed-length output of the hash function) together with the file’s bucket and key 
+in the \texttt{MeasurementFileChecksum} table.  
+
+This fingerprint can then be used to verify the file later on:
+\begin{itemize}
+	\item to confirm that a mirrored copy is identical to the original,  
+	\item to compare against a checksum provided by the user at upload time,  
+	\item or to detect accidental corruption during storage or transfer.  
+\end{itemize}
+
+By recording these digests systematically, the application ensures long-term data integrity and 
+provides a trustworthy way to check that scientific data has not been altered.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Background tasks}\label{sec:background-tasks}
 
 \paragraph{Queueing with Redis RQ.}
-The system uses \textbf{Redis Queue (RQ)} for asynchronous work. Web requests enqueue jobs into named queues (\texttt{default}, optionally \texttt{ofed}) stored in Redis. Dedicated worker processes pull from these queues and execute tasks:
+The application does not perform heavy work inside the web request–response cycle.  
+Instead it uses \textbf{Redis Queue (RQ)}\footnote{\url{https://python-rq.org/}, a lightweight task queue built on Redis.} 
+to schedule jobs in the background.  
 
+The flow is as follows:  
+\begin{enumerate}
+	\item When a user uploads files or registers a measurement, the web process enqueues one or more jobs into Redis.  
+	\item Worker processes (separate long-running Python processes) listen on the queues, pull jobs, and execute them.  
+\end{enumerate}
+
+Two main queues are configured:  
 \begin{itemize}
-	\item \texttt{compute\_checksum(bucket, key)}: streams the object, computes SHA-256, and \texttt{update\_or\_create}s the digest in DB.
-	\item \texttt{make\_nexus\_from\_tiff(...)}: orchestrates mapping + build + publish of the \texttt{.nxs} artefact (see \S\ref{sec:nexus-construction}).
+	\item \texttt{default}: used for checksums and general tasks.  
+	\item \texttt{ofed}: optional, dedicated to NeXus builds so that these long-running jobs do not block faster ones.  
 \end{itemize}
 
-Workers are decoupled from request lifetimes, keeping the UI responsive even when jobs are CPU or IO heavy. All task functions are importable from the worker container path (\texttt{experiment\_manager.tasks}), satisfying RQ’s import model.
+The key background tasks are:  
+\begin{itemize}
+	\item \texttt{compute\_checksum(bucket, key)}: streams the uploaded file in chunks, computes a SHA-256 digest, 
+	and writes it into the \texttt{MeasurementFileChecksum} table using \texttt{update\_or\_create} 
+	(so repeated runs update the same row instead of failing).  
+	\item \texttt{make\_nexus\_from\_tiff(...)}: runs the full NeXus build pipeline 
+	(mapping, scaffold population, and publishing into the mirror bucket; see \S\ref{sec:nexus-construction}).  
+\end{itemize}
+
+Because workers are decoupled from web requests, the user interface stays responsive 
+even if the actual job involves gigabytes of data or many minutes of processing.  
+RQ requires that all task functions be importable by workers; this is why they are all exposed under 
+\texttt{experiment\_manager.tasks}.
 
 \paragraph{Failure modes and retries.}
-Jobs are enqueued with a \texttt{Retry} policy (\texttt{max=3}, backoff intervals). Typical transient failures include S3 timeouts during large reads/writes or temporary certificate/CA issues. Idempotent DB upserts and deterministic storage keys guarantee that replays do not corrupt state. For NeXus builds, job de-duplication uses a stable \texttt{job\_id} to suppress concurrent processing of the same TIFF.
+Jobs are enqueued with an explicit retry policy (\texttt{max=3}, with backoff intervals of 10, 60, and 300 seconds).  
+Common transient errors include:  
+\begin{itemize}
+	\item timeouts while reading or writing large objects to S3,  
+	\item or temporary SSL certificate / CA chain issues.  
+\end{itemize}
+
+The design ensures safety under retries:  
+\begin{itemize}
+	\item Database writes use \texttt{update\_or\_create}, which means that repeating the same job simply updates the existing row.  
+	\item Storage keys are deterministic, so re-running a NeXus build will overwrite the same \texttt{.nxs} object instead of creating duplicates.  
+	\item NeXus jobs use a stable \texttt{job\_id} derived from the file key and instrument pair, 
+	so that the same TIFF cannot be processed twice in parallel.  
+\end{itemize}
 
 \paragraph{Observability.}
-\texttt{django-rq} is mounted under \texttt{/django-rq/} to inspect queues, running jobs, and failures. Application logs annotate enqueue decisions, job IDs, and completion. Exposed presigned URLs for GET (aria2 manifests) include expirations to make download windows auditable.
+Operators and developers need visibility into what jobs are running.  
+The application provides several tools:  
+\begin{itemize}
+	\item \textbf{Web UI:} \texttt{django-rq}\footnote{\url{https://github.com/rq/django-rq}, the Django integration for RQ.} 
+	is mounted under \texttt{/django-rq/}. It shows the state of queues, active jobs, and failed jobs.  
+	\item \textbf{Logs:} enqueueing decisions, job IDs, and completion events are logged.  
+	This makes it possible to trace a measurement from upload to checksum to NeXus conversion.  
+	\item \textbf{Presigned URLs:} when downloads are batched (e.g.\ with aria2 manifests\footnote{\url{https://aria2.github.io/}, a multi-source download utility.}), 
+	the URLs include explicit expiration times.  
+	This ensures that the download window is time-limited and can be audited later.  
+\end{itemize}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{API and UI surfaces}\label{sec:api-ui}
 
-\paragraph{REST API (DRF).}
-The \texttt{api/} package defines serializers and viewsets for domain entities, exposing programmatic access to Projects, Proposals, Samples, and Experiments. The API router aggregates endpoints under a coherent namespace. Serializers enforce the same validation rules as the domain layer to maintain parity between UI and API clients. Test coverage (\texttt{test\_api.py}) verifies shape and permissions.
+\paragraph{Why an API?}
+An \textbf{Application Programming Interface (API)} is a structured way for software to talk to software.  
+Instead of a person clicking through the user interface, another program can send requests over the network 
+and receive structured responses (usually JSON).  
+This makes the system usable not only by humans in the browser but also by scripts, analysis pipelines, 
+or external services.  
+In practice, the project uses two complementary “surfaces”:
+\begin{itemize}
+	\item a \emph{REST API}, meant for machine-to-machine communication,  
+	\item and a \emph{browser-based UI}, which wraps the same logic in a more user-friendly interface.  
+\end{itemize}
+
+\paragraph{REST API (Django REST Framework).}
+The \texttt{api/} package exposes Projects, Proposals, Samples, and Experiments via a REST\footnote{\url{https://restfulapi.net/}, a widely adopted architectural style for web APIs.} interface.  
+This is implemented using Django REST Framework (DRF)\footnote{\url{https://www.django-rest-framework.org/}, the de-facto standard toolkit for APIs in Django}.  
+
+The API is built from:
+\begin{itemize}
+	\item \textbf{Serializers}, which translate Django model instances into JSON and back.  
+	\item \textbf{ViewSets}, which handle the HTTP verbs (GET, POST, PATCH, DELETE) for each entity.  
+	\item \textbf{Routers}, which collect the viewsets under clear endpoints.  
+\end{itemize}
+
+For example, the router registers:
+\begin{itemize}
+	\item \texttt{/api/proposals/} $\to$ \texttt{ProposalViewSet}  
+	\item \texttt{/api/samples/} $\to$ \texttt{SampleViewSet}  
+	\item \texttt{/api/experiments/} $\to$ \texttt{ExperimentViewSet}  
+\end{itemize}
+
+Validation rules in serializers mirror the same constraints as the domain commands, 
+so that API clients cannot bypass the business logic enforced by the UI.  
+Automated tests (\texttt{test\_api.py}) verify not only the output shape but also permissions: 
+unauthenticated requests get \texttt{403 Forbidden}, 
+while authenticated users can filter samples by proposal or experiments by sample.
 
 \paragraph{HTMX modals and the management board.}
-The primary operator surface is a three-pane board (\texttt{ManageProposalsView}):
-
+For human operators, the primary surface is a browser-based “management board.”  
+It is a three-pane view defined by \texttt{ManageProposalsView}:  
 \begin{itemize}
-	\item Left: proposals list (\texttt{ProposalPane}).
-	\item Middle: samples for the selected proposal (\texttt{SamplePane}).
-	\item Right: experiments for the selected sample and the measurement form (\texttt{ExperimentPane}, \texttt{MeasurementPane}).
+	\item \textbf{Left:} list of proposals (\texttt{ProposalPane}).  
+	\item \textbf{Middle:} samples for the selected proposal (\texttt{SamplePane}).  
+	\item \textbf{Right:} experiments for the selected sample, and the form to register new measurements 
+	(\texttt{ExperimentPane}, \texttt{MeasurementPane}).  
 \end{itemize}
 
-HTMX swaps fragments into \texttt{<div id="...Pane">} containers. Creation flows are handled by modal forms (\texttt{ProposalCreateModal}, \texttt{SampleCreateModal}, \texttt{ExperimentCreateModal}); on success, the view returns \texttt{204} and emits an \texttt{HX-Trigger} to close the modal and refresh the affected pane token (e.g.\ \texttt{experiment-{sample\_id}}). Invalid POSTs return \texttt{200} with the form re-rendered and normalized non-field errors.
+The board is dynamic thanks to \textbf{HTMX}\footnote{\url{https://htmx.org/}, a small JavaScript library that allows declarative AJAX interactions.}.  
+When the user clicks “create proposal/sample/experiment,” an HTMX-driven modal opens.  
+Submitting the form calls the domain command under the hood.  
+On success, the server returns \texttt{204 No Content} and triggers an \texttt{HX-Trigger}, 
+which closes the modal and refreshes the affected pane.  
+If validation fails, the server responds with a normal \texttt{200 OK}, 
+but the response body contains the form HTML again, now with error messages filled in. 
+HTMX swaps this HTML back into the modal so the user can correct their input.
 
 \paragraph{Dashboards and landing.}
-Authenticated users are routed to role-aware dashboards: \texttt{admin\_dashboard} for privileged users (group “lamepi”), \texttt{regular\_dashboard} otherwise. Guests see a minimal landing and are redirected on login.
+After login, users land on dashboards tailored to their role:  
+\begin{itemize}
+	\item \texttt{admin\_dashboard} for privileged operators (group “lamepi”),  
+	\item \texttt{regular\_dashboard} for everyone else.  
+\end{itemize}
+
+Guests who are not logged in see only a minimal landing page and are redirected to the dashboard once authenticated.
 
 \paragraph{Bucket and file views.}
-\texttt{/buckets/} lists proposals with their RAW (or mirrored, \texttt{/ofed/}) buckets. \texttt{/buckets/<bucket>/?prefix=...} renders a hierarchical view by scanning keys and partitioning them into “folders” (prefix segments) and files under the current prefix. For single files, presigned GET links are available; for prefixes, the UI offers:
+The application also provides a direct window into S3 buckets.  
+\texttt{/buckets/} lists proposals with their RAW or mirrored (\texttt{/ofed/}) buckets.  
+\texttt{/buckets/<bucket>/?prefix=...} renders a file-browser–like view by scanning keys and grouping them into “folders.”  
+
+For each file or prefix, the UI provides tools:  
 \begin{itemize}
-	\item \textbf{ZIP streaming} of the entire sub-tree (store-only ZIP, no compression to avoid CPU spikes).
-	\item \textbf{aria2 manifest} generation (\texttt{.aria2.txt}) containing per-object presigned URLs with per-file output paths for high-throughput CLI downloads.
+	\item \textbf{Presigned GET links} for single-file downloads.  
+	\item \textbf{ZIP streaming} for folders: the server streams a ZIP of the whole subtree 
+	(without compression, to save CPU).  
+	\item \textbf{aria2 manifests}\footnote{\url{https://aria2.github.io/}, a command-line download tool supporting parallel and segmented transfers.} 
+	for high-throughput bulk downloads. Each manifest (\texttt{.aria2.txt}) contains per-file presigned URLs and output paths.  
 \end{itemize}
-Missing buckets render an actionable state; admins can recreate idempotently.
+
+If a bucket is missing, the view shows an actionable error and allows an administrator to re-create it safely.
 
 \paragraph{Static assets and client behaviour.}
-Custom CSS/JS is minimal. Uppy is bundled for uploads; a small helper initializes the uploader with drag-and-drop and hooks the \texttt{/s3\_presign} endpoint. Modal lifecycle is handled by \texttt{htmx-modals.js} (open/close/esc).
+The client-side code is deliberately kept small:  
+\begin{itemize}
+	\item custom CSS/JS is minimal,  
+	\item the Uppy\footnote{\url{https://uppy.io/}, a JavaScript file uploader with progress tracking and retries.} library handles drag-and-drop uploads, 
+	querying \texttt{/s3\_presign} to get presigned PUT URLs,  
+	\item \texttt{htmx-modals.js} manages modal lifecycle (open, close, escape key).  
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Security model in-app}\label{sec:security}
 
@@ -188,6 +608,8 @@ Presigned URLs are scoped to a single object, method, and expiry; browsers are p
 
 \paragraph{Audit trail.}
 \texttt{MeasurementFileChecksum} provides immutable fingerprints for uploaded artefacts. README files (per entity and per measurement) document the who/what/when of data creation. Application logs annotate all background job scheduling/execution, including job IDs and storage destinations.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Performance and scalability}\label{sec:performance}
 
