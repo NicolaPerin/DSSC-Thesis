@@ -1,8 +1,6 @@
 \chapter{Deployment and Validation in the VirtualOrfeo Environment}\label{chap:virtualorfeo-deployment}
 
-\section{The VirtualOrfeo Environment and Deployment}
-
-\subsection{VirtualOrfeo as a Digital Twin of the HPC Environment}
+\section{VirtualOrfeo as a Digital Twin of the HPC Environment}
 
 To develop and test the data management platform in a realistic but safe setting, we use an internal system called \textbf{VirtualOrfeo}. VirtualOrfeo functions as a \emph{digital twin} of the ORFEO HPC cluster: a virtualized replica of its key infrastructure and services. This allows us to deploy and evaluate applications under conditions that closely mimic production, without the risk of disrupting the actual cluster. Digital twins are often used in High-Performance Computing (HPC) to experiment with configuration changes or new workflows before rolling them out in production \parencite{Ohmura2023TwdsDT}.
 
@@ -22,8 +20,9 @@ The goal is to preserve fidelity where it matters while keeping the environment 
 
 In practice, VirtualOrfeo provides a controlled environment to connect our Django-based application with HPC components such as authentication, storage, and container orchestration. By offering a faithful but bounded replica of ORFEO’s software environment, it supports safe experimentation and rapid iteration, in line with DevOps practices in scientific computing \parencite{Ohmura2023TwdsDT}.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{K3s Cluster Topology in the Virtual Environment}
+\section{K3s Cluster Topology in the Virtual Environment}
 
 At the heart of VirtualOrfeo is a Kubernetes cluster deployed on one of the 
 virtual machines (or across a couple of VMs) using \textbf{K3s}. K3s is a 
@@ -132,7 +131,9 @@ that make the environment resemble a production HPC setting.
 We begin with identity and access management, which provides 
 centralized authentication across the system.
 
-\subsection{Identity and Access Management in VirtualOrfeo} \label{sec:virtualorfeo-iam}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Identity and Access Management in VirtualOrfeo} \label{sec:virtualorfeo-iam}
 
 The VirtualOrfeo environment includes a full \textbf{Identity and Access Management (IAM)} stack to mirror the authentication system of the production cluster. In this setup, we combine \textbf{FreeIPA} for directory services (accounts and groups) with \textbf{Authentik} as an OpenID Connect (OIDC) identity provider. 
 
@@ -209,8 +210,9 @@ with persistent storage in a reliable and secure way.
 We therefore examine how VirtualOrfeo incorporates object storage 
 to mirror the production environment.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{Storage Integration in VirtualOrfeo} \label{sec:virtualorfeo-storage}
+\section{Storage Integration in VirtualOrfeo} \label{sec:virtualorfeo-storage}
 
 Storage of experimental data is a major concern for our application, and 
 VirtualOrfeo replicates the production storage environment to a large extent. In 
@@ -354,8 +356,9 @@ to host real applications.
 The following subsection describes how a representative Django-based web service 
 is packaged and deployed on the VirtualOrfeo cluster.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{Application Packaging and Deployment on K3s}
+\section{Application Packaging and Deployment on K3s}
 
 To demonstrate how a web application can be deployed in the VirtualOrfeo cluster, 
 we use a representative \textbf{Django} application packaged and deployed with 
@@ -429,8 +432,9 @@ reproducible deployment unit.
 Equally important is the secure and flexible management of configuration values 
 and secrets, which is handled through Kubernetes-native mechanisms.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{Secrets and Configuration Management}
+\section{Secrets and Configuration Management}
 
 Managing configuration and secrets is a critical part of deploying the application. In the VirtualOrfeo environment, the application requires a mix of configuration values: some are non-sensitive (e.g.\ URLs, feature flags), while others are highly sensitive (e.g.\ passwords, private keys, API secrets). Kubernetes provides native resources to handle both types: \textbf{ConfigMaps} for plain configuration and \textbf{Secrets} for sensitive values. Our deployment makes extensive use of both, ensuring that credentials remain secure and configuration stays flexible.
 

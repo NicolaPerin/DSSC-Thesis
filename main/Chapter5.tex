@@ -588,63 +588,206 @@ The client-side code is deliberately kept small:
 	\item \texttt{htmx-modals.js} manages modal lifecycle (open, close, escape key).  
 \end{itemize}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{figure}[h]
+	\centering
+	\resizebox{0.8\textwidth}{!}{%
+		\begin{tikzpicture}[
+			node distance=1.0cm and 1.5cm,
+			every node/.style={font=\sffamily},
+			box/.style={draw, rounded corners, align=center, minimum width=2.7cm, minimum height=0.8cm}
+			]
+		
+				% Top layer
+				\node[box, fill=blue!15] (rest) {REST API \\ (Django REST Framework)};
+				\node[box, fill=green!15, right=of rest] (htmx) {Browser UI \\ (HTMX modals, board)};
+				
+				% Middle layer
+				\node[box, fill=orange!20, below=of rest, xshift=2.7cm] (domain) {Domain commands \\ (create\_proposal, register\_measurement, …)};
+				
+				% Bottom layer
+				\node[box, fill=gray!20, below left=of domain, xshift=-2.0cm] (storage) {Storage gateway \\ (S3 / Ceph RGW)};
+				\node[box, fill=gray!20, below right=of domain, xshift=2.0cm] (rq) {Background workers \\ (Redis RQ)};
+				
+				% Connections
+				\draw[->] (rest) -- (domain);
+				\draw[->] (htmx) -- (domain);
+				\draw[->] (domain) -- (storage);
+				\draw[->] (domain) -- (rq);
+				
+				% Labels
+				\node[below=0.2cm of storage] {\footnotesize Buckets, objects, presigned URLs};
+				\node[below=0.2cm of rq] {\footnotesize Checksums, NeXus builds};
+		
+		\end{tikzpicture}%
+		}
+\caption{Two faces of the system: REST API for programmatic clients and HTMX UI for human operators. Both call into the same domain commands, which in turn use the storage gateway and background workers.}
+\end{figure}
 
+
+\begin{figure}[h]
+	\centering
+	\resizebox{0.75\textwidth}{!}{%
+		\begin{tikzpicture}[
+			node distance=1.0cm and 2.2cm,
+			every node/.style={font=\sffamily},
+			box/.style={draw, rounded corners, align=center, minimum width=3cm, minimum height=0.9cm}
+			]
+			
+			\node[box, fill=green!15] (user) {User in browser \\ (HTMX modal form)};
+			\node[box, fill=blue!15, below=of user] (django) {Django view \\ (domain command + validation)};
+			
+			% Success branch
+			\node[box, fill=orange!20, below left=1.8cm and 2.8cm of django] (success) {Response: 204 No Content \\ + HX-Trigger};
+			\node[box, fill=gray!20, below=0.8cm of success] (update) {Modal closes, pane refreshes};
+			
+			% Error branch
+			\node[box, fill=red!20, below right=1.8cm and 2.8cm of django] (error) {Response: 200 OK \\ with form + errors};
+			\node[box, fill=gray!20, below=0.8cm of error] (rerender) {Modal re-renders \\ with validation messages};
+			
+			% Arrows
+			\draw[->] (user) -- (django);
+			\draw[->] (django.west) .. controls +(left:1.5cm) and +(up:1.2cm) .. (success.north);
+			\draw[->] (django.east) .. controls +(right:1.5cm) and +(up:1.2cm) .. (error.north);
+			\draw[->] (success) -- (update);
+			\draw[->] (error) -- (rerender);
+			
+		\end{tikzpicture}%
+	}
+	\caption{HTMX modal flow. After form submission, the server either replies with \texttt{204 No Content} (success: close modal, refresh pane) or with \texttt{200 OK} and the form HTML filled with errors (failure: modal re-renders).}
+\end{figure}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\FloatBarrier
 \section{Security model in-app}\label{sec:security}
 
-\paragraph{Authentication and claims.}
-Authentication and single sign-on are delegated to Authentik (OIDC). The app never handles passwords. On login, the user is redirected to the IdP; after authorization, an ID token (JWT) is validated and a Django session is established. OIDC endpoints used in logout include an ID token hint and a post-logout redirect.
+\paragraph{Authentication and login.}
+The application never manages passwords itself. Instead, it delegates login to 
+an external identity provider (Authentik) using OpenID Connect (OIDC).  
+When a user tries to log in, they are redirected to Authentik.  
+After successful login, Authentik returns an ID token (a signed JWT) which 
+the app validates. From this token, a normal Django session is created.  
+Logout also goes through OIDC: the app passes an ID token hint and a 
+post-logout redirect so that both the identity provider and the local session 
+are closed at the same time.
 
-\paragraph{Claim-to-role mapping and authorization.}
-Authorization is enforced via:
+\paragraph{Claims and group mapping.}
+Each token from Authentik carries \emph{claims}\footnote{OIDC claims are 
+	fields embedded in the ID token, such as username, first/last name, or group 
+	membership.}. The custom backend (\texttt{LameOIDCBackend} in 
+\texttt{auth\_backends.py}) reads these claims and synchronizes them into the 
+Django user model:
 \begin{itemize}
-	\item \texttt{@login\_required} on all sensitive views.
-	\item \texttt{@user\_passes\_test(is\_boss)} for admin-only actions; \texttt{is\_boss} checks group membership (synced from FreeIPA/Authentik).
+	\item \texttt{preferred\_username} → \texttt{user.username},  
+	\item \texttt{given\_name} / \texttt{family\_name} → \texttt{first\_name} and \texttt{last\_name},  
+	\item \texttt{groups} → Django group membership (created on demand if missing).  
 \end{itemize}
-Write operations are further scoped: e.g.\ bucket recreation, mirrored views, and management endpoints are limited to admins. Proposal \texttt{created\_by} persists provenance.
+This way, group membership defined in Authentik or FreeIPA flows into Django 
+and can be reused for permission checks.
 
-\paragraph{Data plane protections.}
-Presigned URLs are scoped to a single object, method, and expiry; browsers are permitted to use them only from the configured origin (CORS). Sensitive configuration (S3 keys, OIDC secrets, CA bundles) is injected via Kubernetes Secrets and not embedded into images. TLS verification pins to the internal CA bundle (FreeIPA) through environment variables consumed by boto3/requests.
+\paragraph{Authorization rules.}
+Access control in views builds on this group information:
+\begin{itemize}
+	\item \texttt{@login\_required} ensures that only authenticated users 
+	can reach sensitive endpoints.  
+	\item \texttt{@user\_passes\_test(is\_boss)} marks administrator-only 
+	actions; \texttt{is\_boss} checks whether the user belongs to the right group.  
+\end{itemize}
+Dangerous operations such as bucket recreation, access to mirrored views, 
+or management dashboards are strictly limited to admins.  
+For normal data, each Proposal stores a \texttt{created\_by} reference 
+so that ownership and provenance remain visible.
 
-\paragraph{Audit trail.}
-\texttt{MeasurementFileChecksum} provides immutable fingerprints for uploaded artefacts. README files (per entity and per measurement) document the who/what/when of data creation. Application logs annotate all background job scheduling/execution, including job IDs and storage destinations.
+\paragraph{Protecting data transfers.}
+Uploads and downloads rely on presigned S3 URLs.  
+Each presigned URL is valid only for:
+\begin{itemize}
+	\item a single object (by key),  
+	\item a single method (GET or PUT),  
+	\item and a limited lifetime (usually one hour).  
+\end{itemize}
+Buckets are configured with strict CORS rules so that browsers can use these 
+URLs only from the expected frontend origin.  
+Sensitive secrets (S3 keys, OIDC client secrets, CA bundles) are never baked 
+into container images. They are mounted as Kubernetes Secrets and injected at 
+runtime. TLS checks are pinned to the internal FreeIPA CA by setting 
+\texttt{AWS\_CA\_BUNDLE} and letting boto3/requests pick it up.
+
+\paragraph{Recording what happened.}
+Every uploaded file is checksummed in the background.  
+The resulting SHA-256 digests are stored in the 
+\texttt{MeasurementFileChecksum} table, ensuring that each file has a 
+permanent fingerprint.  
+Alongside the files, plain-text README files describe who created what, when, 
+and with which description.  
+Logs capture all major events — such as scheduling or finishing background 
+jobs — together with the job ID and storage location.  
+This combination of checksums, README files, and logs makes it possible 
+to trace back the history of data and verify its consistency over time.
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Performance and scalability}\label{sec:performance}
 
-\paragraph{Separation of upload and conversion planes.}
-Direct-to-S3 uploads eliminate the server as a bottleneck for large data. The only synchronous server path during uploads is the lightweight \texttt{/s3\_presign} call and the subsequent metadata/registration POST (small payload). Conversion to NeXus, checksumming, and mirroring are fully decoupled in Redis workers, allowing elastic scaling of background throughput independently of web capacity.
+\paragraph{Separating upload from conversion.}
+Large files are never sent through the Django server itself.  
+When a user uploads, the browser first asks the backend for a \emph{presigned URL}\footnote{A presigned URL is a temporary web address that allows the browser to upload or download a specific object from S3 directly, without passing the data through the application server.}.  
+The browser then sends the file straight to S3/MinIO.  
+The only parts that go through the Django server are very small: the request for the presigned URL (\texttt{/s3\_presign}) and the follow-up registration of metadata.  
+Expensive work like computing checksums, converting TIFFs into NeXus files, and copying objects into mirror buckets runs later in background workers, not during the upload.  
+This way, web responsiveness and heavy processing can scale independently.
 
-\paragraph{Concurrency characteristics.}
+\paragraph{Handling many things at once.}
 \begin{itemize}
-	\item \textbf{Uploads:} Uppy can open multiple PUTs concurrently; S3/RGW horizontally scales IO. Backend CPU and memory remain stable since file bytes never traverse Django.
-	\item \textbf{Workers:} Spin up 
-	N
-	N RQ workers (per queue) to parallelize checksum and builder jobs. The deduped \texttt{job\_id} strategy prevents duplicate compute for the same key.
-	\item \textbf{Downloads:} Presigned GETs shift bandwidth to the object store. ZIP streaming uses back-pressure through \texttt{StreamingHttpResponse} to avoid buffering the entire archive.
+	\item \textbf{Uploads:} The Uppy\footnote{\url{https://uppy.io/}, a JavaScript library for drag-and-drop uploads with retries and progress bars.} uploader can open several parallel connections at once.  
+	Object storage systems like Ceph RGW or MinIO are built to handle concurrent input/output, so the bottleneck is usually the network link, not the application.  
+	Since Django never touches the file bytes, its CPU and memory stay stable even under heavy uploads.  
+	
+	\item \textbf{Workers:} Background work is handled by Redis Queue (RQ)\footnote{RQ (\url{https://python-rq.org/}) is a Python library that uses Redis as a queue to manage jobs.}.  
+	Operators can start as many worker processes as needed.  
+	Each worker can compute checksums or build NeXus files in parallel.  
+	A stable job identifier is used so that if two requests try to process the same TIFF, only one job is actually run.  
+	
+	\item \textbf{Downloads:} For reading data, browsers again receive presigned URLs and fetch files directly from S3.  
+	For folder downloads, the app streams a ZIP file on the fly.  
+	Streaming means the server never holds the whole ZIP in memory: it sends each chunk as it is produced, letting the browser apply back-pressure\footnote{Back-pressure is when the receiving side slows down the sending side so that buffers do not overflow.}.
 \end{itemize}
 
 \paragraph{Database performance.}
-The ORM constraints already imply indexes for uniqueness (e.g.\ (\texttt{project}, \texttt{number}), (\texttt{proposal}, \texttt{slug}), (\texttt{sample}, \texttt{slug})). Additional pragmatic indices can be added if access patterns warrant (e.g.\ on \texttt{MeasurementFileChecksum(bucket, key)}, which is already unique). Selects in list views use \texttt{select\_related} to reduce join chatter.
+The database tables enforce uniqueness (for example, one proposal number per project, one sample per proposal).  
+Django automatically creates the necessary indexes to support these constraints.  
+Extra indexes can be added for frequent lookups, such as checksums (\texttt{MeasurementFileChecksum(bucket, key)}).  
+To avoid unnecessary database queries, list views use \texttt{select\_related}, which fetches related rows in a single query.
 
-\paragraph{Caching opportunities.}
+\paragraph{Where caching helps.}
 \begin{itemize}
-	\item \textbf{UI fragments:} Memoize proposal/sample lists for short TTLs to avoid re-query on fast HTMX interactions.
-	\item \textbf{Presign results:} Avoid caching (short expiries, key specificity), but consider client-side reuse during multi-file sessions.
-	\item \textbf{Readme parsing:} The modal that fetches and parses README could cache parsed lines per object ETag.
+	\item \textbf{UI fragments:} Proposal and sample lists can be cached for a short time, which reduces the load when users rapidly switch panes in the HTMX interface.  
+	\item \textbf{Presigned URLs:} These should not be cached on the server side, because they expire quickly and are tied to a specific file.  
+	Clients, however, may reuse them during multi-file uploads.  
+	\item \textbf{README parsing:} When a modal needs to display a README file, it can cache the parsed lines until the file changes (detected via its ETag\footnote{An ETag is an identifier provided by the storage service that changes whenever the file content changes.}).  
 \end{itemize}
 
-\paragraph{Network and TLS.}
-Presign and S3 clients honor an injected CA bundle; \texttt{AWS\_CA\_BUNDLE}/\texttt{REQUESTS\_CA\_BUNDLE} guard against self-signed errors. Keeping the CA in a mounted Secret avoids baking it into the image. MetalLB + Ingress terminate TLS for app endpoints; presigned URLs point at RGW/MinIO with HTTPS, enabling end-to-end encryption.
+\paragraph{Network and TLS security.}
+All S3 clients are configured to use TLS certificates from a trusted CA bundle\footnote{A Certificate Authority (CA) bundle is a set of trusted certificates used to verify secure connections.}.  
+This bundle is mounted at runtime as a Kubernetes Secret, not embedded in the image.  
+For the application endpoints, TLS termination is handled by Ingress\footnote{Ingress is a Kubernetes component that manages external access to services, often with TLS termination.} in combination with MetalLB\footnote{MetalLB is a Kubernetes load-balancer implementation for bare-metal clusters.}.  
+Presigned URLs point at S3/MinIO with HTTPS, so encryption holds end-to-end.
 
-\paragraph{Fault tolerance.}
-S3 client retries are enabled; background jobs apply backoff and are idempotent. Bucket ensurement tolerates absent buckets and reapplies CORS. The \texttt{/buckets/} UI degrades gracefully on missing buckets (actionable 404 with recreate option for admins).
+\paragraph{Dealing with failures.}
+The S3 client is configured to retry failed requests a few times before giving up.  
+Background jobs also use retry policies with exponential backoff, and they are written to be safe to run multiple times without causing duplicates or corruption.  
+If a bucket does not exist, the code can recreate it and reapply its CORS configuration.  
+The \texttt{/buckets/} view shows clear error messages when something is missing, and administrators can fix it with one click.
 
-\paragraph{Operational scaling.}
-Web and worker pods can scale independently. Storage is the dominant scaling axis; moving from local-path PVs to a CSI-backed block store (or external S3) is transparent to the code (gateway abstraction). Redis can be swapped for a managed service; RQ workers remain unchanged. The API and UI layers are stateless aside from the DB, facilitating horizontal web scaling behind the Ingress.
+\paragraph{Scaling in operations.}
+Web processes and background workers can scale separately.  
+The main scaling factor is storage: moving from local volumes to a CSI-backed block store\footnote{CSI (Container Storage Interface) is a standard for connecting Kubernetes to different storage systems.} or to an external S3 cluster requires no code change because everything goes through the storage gateway abstraction.  
+Redis can be replaced by a managed service if needed; RQ workers keep working the same way.  
+The API and UI servers are stateless (except for the shared database), which means they can be horizontally scaled behind the load balancer without special coordination.
+
 
 \bigskip
 
 \noindent\textbf{Summary.}
-The application enforces a strict separation of concerns: domain commands own business invariants; the storage gateway encapsulates S3 details and CORS; Redis RQ absorbs long-running and failure-prone work; and UI/API layers remain thin, reactive façades. Presigned transfers, per-proposal buckets, and mirrored namespaces suit HPC-like, high-throughput environments. The result is a system whose correctness derives from enforced invariants and idempotent writes, whose security leverages OIDC claims and origin-pinned CORS, and whose performance scales with the object store and worker pools rather than with the web tier.
+This chapter takes a detailed look at the Django application for managing experimental data. The system organizes projects, proposals, samples, and experiments in a clear hierarchy, with each creation automatically writing metadata into S3 buckets alongside the raw data. Large microscope outputs are uploaded directly to object storage through presigned URLs, keeping the web server light, while background workers handle heavier jobs like checksums and NeXus conversions. Metadata from TIFFs is translated into standardized NeXus structures using JSON mapping files, making the system adaptable across instruments. All storage operations go through a thin gateway layer that hides S3 details and simplifies testing. A REST API exposes the same functionality available in the browser-based management board, which uses HTMX modals for interactive creation and error handling. Authentication is delegated to Authentik via OIDC, group claims control authorization, and presigned URLs enforce strict, time-limited access. Checksums, READMEs, and logs together provide a consistent record of data handling. Finally, the architecture separates uploads from processing, allows workers and web processes to scale independently, and ensures resilience through retries and safe replays, making the platform both robust and scalable for growing data needs.

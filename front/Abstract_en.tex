@@ -1,3 +1,15 @@
 \chapter{Abstract, english}
 
-\section*{Introduction}
+Electron microscopy (EM) experiments generate very large and complex datasets. These are often stored in vendor-specific formats with little metadata, which makes them hard to share, reproduce, or reuse. To address this, this thesis applies the FAIR data principles---Findable, Accessible, Interoperable, and Reusable---to the workflows of the Laboratorio di Microscopia Elettronica (LAME) in Trieste, Italy.
+
+The project develops and tests a FAIR-by-design data infrastructure that:
+\begin{itemize}
+	\item captures data and metadata directly during acquisition,
+	\item converts and stores them automatically in standardized NeXus/NXem format,
+	\item uses a centralized data lake for durability and scalability,
+	\item and provides a web application for structured uploads, annotations, and access.
+\end{itemize}
+
+The system separates microscope operations from heavy processing, relying on the ORFEO high-performance data center for storage and computation. A virtual test environment was used to safely develop and validate the software stack before production deployment. This ensures EM data are preserved in interoperable formats, enriched with metadata, and prepared for open access.
+
+The work contributes a practical blueprint for reproducible FAIR data management in microscopy, with the potential to scale across the NFFA-DI program and align with European open science policies.

@@ -1,5 +1,44 @@
-\chapter*{Conclusion}\label{chap:concl}
+\chapter*{Conclusions}\label{chap:concl}
 % Do not edit
 \addcontentsline{toc}{chapter}{Conclusion}
 \label{chap:concl}
 \markboth{Conclusion}{Conclusion}
+
+This thesis investigated how the FAIR data principles can be applied to the 
+daily work of an electron microscopy laboratory. The problem addressed was the 
+increasing amount and complexity of data produced by modern instruments, and the 
+difficulty of storing, organizing, and reusing these data in a systematic way. 
+The goal was to design and implement a data pipeline and platform that make 
+microscopy datasets easier to manage and more useful in the long term.
+
+The work resulted in a FAIR-by-design pipeline that starts from the moment of 
+data acquisition. Raw files are placed in an object store, enriched with 
+metadata, and where possible converted into standardized NeXus/NXem files. The 
+system records checksums and README files to keep track of provenance, and 
+separates raw from processed data using dedicated buckets. All of this is 
+integrated into a web application that allows researchers to create projects, 
+proposals, samples, and experiments, and to upload and browse their data. 
+Background workers handle the heavier tasks such as checksum calculation and 
+file conversion, so that the web interface remains responsive.  
+
+To make sure the platform could be deployed safely in production, the work also 
+set up and used the VirtualOrfeo environment, which reproduces the main services 
+of the ORFEO cluster. This allowed testing of authentication, storage, and 
+deployment choices before moving to the real infrastructure. A layered software 
+design helped keep the different parts of the system — domain model, storage 
+gateway, background tasks, and user interfaces — clear and independent.
+
+There are several areas for future work. The NeXus writers can be extended to 
+validate files more strictly, convert units into standard forms, and support 
+multi-frame datasets. More instrument mappings should be added so that the 
+system can be used with a wider variety of microscopes. Connections to external 
+research infrastructures, including persistent identifiers and metadata 
+standards, would improve the visibility and reuse of the data. Finally, scaling 
+up the system in production will require monitoring how it behaves under higher 
+data rates and adjusting the storage and queueing backends as needed.
+
+In summary, the thesis shows that FAIR data management for electron microscopy 
+is possible with a pipeline and platform that combine standardized formats, 
+automated processing, and integration with laboratory workflows. The result is a 
+practical approach that supports both local research needs and the broader goals 
+of open and reproducible science.
