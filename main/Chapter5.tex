@@ -285,29 +285,28 @@ The target key is deterministically derived from the TIFF key by changing the ex
 \section{Storage gateway}\label{sec:storage-gateway}
 
 \paragraph{Why a gateway layer?}
-All files in the system --- whether raw microscope outputs or derived NeXus datasets --- live in an object store that speaks the Amazon S3 protocol. 
+All files in the system---whether raw microscope outputs or derived NeXus datasets---live in an object store that speaks the Amazon S3 protocol. 
 In practice this means either Ceph RGW or MinIO. 
 While the Python library \texttt{boto3}\footnote{%
 	\texttt{boto3} is Amazon’s official Python SDK for S3 and related services; 
 	it provides functions for creating buckets, uploading objects, and generating presigned URLs.} 
-could be called directly from any part of the code, could be called directly from any part of the code, 
-the application instead defines a thin \emph{storage gateway} layer. 
+could be called directly from any part of the code, the application instead defines a thin \emph{storage gateway} layer. 
 This layer hides S3-specific details behind a common interface, 
 so that the rest of the codebase only deals with a handful of simple methods 
-such as “create a bucket”, “list objects”, “upload”, “download”, 
-or “generate a presigned URL”.
+such as ``create a bucket'', ``list objects'', ``upload'', ``download'', 
+or ``generate a presigned URL''.
 
 This abstraction has two main benefits:  
 \begin{itemize}
 	\item It isolates S3 configuration (endpoints, credentials, and CORS rules\footnote{%
 		CORS, or Cross-Origin Resource Sharing, is explained in detail later in this section.}) in one place.  
-	\item It allows swapping in a fake, in-memory implementation during testing 
-	so that unit tests do not require a live S3 service.  
+	\item It allows swapping in a fake, in-memory implementation during testing or development, 
+	so that the entire stack can be deployed without requiring a live S3 service.  
 \end{itemize}
 
 \paragraph{Gateway interface and implementations.}
 The gateway interface is declared in \texttt{storage.py} as a Python \texttt{Protocol} called \texttt{StorageGateway}.  
-It defines the expected methods:  
+It defines the expected methods:
 \begin{itemize}
 	\item \texttt{create\_bucket(name)} to create a bucket if it does not exist.  
 	\item \texttt{list(bucket, prefix)} to list objects under a given prefix.  
@@ -316,20 +315,37 @@ It defines the expected methods:
 	\item \texttt{presign\_get(...)} and \texttt{presign\_put(...)} to generate time-limited URLs for download and upload.  
 \end{itemize}
 
-The default implementation, called \texttt{\_BotoStorage}, forwards each call to helper functions in \texttt{services/s3.py}, which in turn use \texttt{boto3}.  
-For tests, \texttt{storage\_fake.py} provides \texttt{InMemoryGatewayImpl}, which stores bytes in a Python dictionary keyed by \texttt{bucket} and \texttt{key}. 
-This makes unit tests reproducible and independent of real storage.
+There are two concrete implementations:
+\begin{description}
+	\item[Real S3 (\texttt{\_BotoStorage})]  
+	For production, the gateway forwards each call to helper functions in \texttt{services/s3.py}, which wrap \texttt{boto3}.  
+	Here the methods correspond directly to S3 operations: \texttt{create\_bucket} sends a \texttt{CreateBucket} request, 
+	\texttt{list} pages through \texttt{ListObjectsV2}, and \texttt{presign\_put} uses AWS’s Signature Version~4 (SigV4) algorithm 
+	to generate a secure upload URL.
+	
+	\item[Fake S3 (\texttt{InMemoryGatewayImpl})]  
+	For testing or developer deployments without Ceph/MinIO, the system provides an in-memory backend.  
+	Objects are stored in a nested Python dictionary, keyed by \texttt{bucket} and \texttt{key}.  
+	Crucially, the fake implementation also generates \emph{same-origin presigned URLs}: instead of pointing to 
+	\texttt{https://rgw.k3s.virtualorfeo.it/...}, a \texttt{PUT} presign returns a URL such as
+	\begin{center}
+		\texttt{https://lame-fair.k3s.virtualorfeo.it/s3-fake-put/\{bucket\}/\{key\}}
+	\end{center}
+	This URL is handled by two lightweight Django views (\texttt{s3\_fake\_put}, \texttt{s3\_fake\_get}) 
+	that accept \texttt{PUT} or \texttt{GET} requests, update the in-memory store, and return appropriate CORS headers.  
+	This avoids cross-origin requests entirely and lets the browser upload directly to the Django process.  
+\end{description}
 
 \paragraph{Bucket naming and strategy.}
 Each Proposal in the domain model owns one dedicated bucket.  
 The bucket name is derived deterministically from the Project slug and Proposal number, 
 plus an eight-character hash to avoid collisions.  
-For example:  
+For example:
 \begin{center}
 	\texttt{lame-raw-nffa-42-a1b2c3d4}
 \end{center}
 
-This design has several advantages:  
+This design has several advantages:
 \begin{itemize}
 	\item Buckets clearly separate data between Proposals.  
 	\item Names are predictable and collision-resistant.  
@@ -341,7 +357,7 @@ A helper \texttt{mirror\_bucket\_for(...)} rewrites \texttt{lame-raw-*} into \te
 so the raw files and the processed results remain side by side but in separate namespaces.
 
 \paragraph{Key naming conventions.}
-Within each bucket, keys follow a structured prefix layout that reflects the domain hierarchy:  
+Within each bucket, keys follow a structured prefix layout that reflects the domain hierarchy:
 \begin{center}
 	\texttt{<proposal\_prefix>(proposal)/README.txt} \\
 	\texttt{<sample\_prefix>(sample)/README.txt} \\
@@ -349,7 +365,7 @@ Within each bucket, keys follow a structured prefix layout that reflects the dom
 \end{center}
 
 Raw measurements place a \texttt{README.txt} next to the uploaded files inside their folder.  
-This “local README” makes browsing easier: metadata is always co-located with the data it describes.
+This ``local README'' makes browsing easier: metadata is always co-located with the data it describes.
 
 \paragraph{Workflow and presigned URLs.}
 Large microscopy files can be tens or hundreds of gigabytes in size.  
@@ -362,29 +378,24 @@ for a limited time (usually one hour).
 The workflow looks like this:
 \begin{enumerate}
 	\item When a user wants to upload, the browser asks the backend at \texttt{/s3\_presign/} for a presigned \texttt{PUT} URL.  
-	\item The backend generates it using \texttt{boto3} with SigV4 signing\footnote{%
-		SigV4 is Amazon’s Signature Version~4 algorithm, the standard way of signing S3 requests 
-		so they can be securely authenticated without exposing long-term credentials.}, 
-	and also tells the browser which headers (such as \texttt{Content-Type}) must be sent.  
-	\item The browser (via the Uppy\footnote{Uppy is an open-source JavaScript file uploader with drag-and-drop, 
-		resumable uploads, and progress indicators: \url{https://uppy.io/}.} library) 
-	uploads the file directly to S3/RGW at 
-	
-	\texttt{https://rgw.k3s.virtualorfeo.it}.  
-	\item When a user wants to download, the same pattern applies: the backend generates a presigned \texttt{GET} URL, 
-	which the browser can fetch directly.  
+	\item The backend generates it using either \texttt{boto3} (real storage) or the in-memory gateway (fake storage).  
+	\item In the real case, the URL points at \texttt{https://rgw.k3s.virtualorfeo.it/...}; 
+	in the fake case, it points back to Django itself at \texttt{/s3-fake-put/...}.  
+	\item The browser (via Uppy\footnote{Uppy is an open-source JavaScript file uploader with drag-and-drop, 
+		resumable uploads, and progress indicators: \url{https://uppy.io/}.}) 
+	uploads the file to that URL with the given headers.  
+	\item Downloads use the same mechanism: \texttt{presign\_get} yields either a real S3 link or a local \texttt{/s3-fake-get/...} link.  
 \end{enumerate}
 
-This way, Django remains in control of \emph{authorization} (who is allowed to upload/download what) 
-but does not handle the actual bytes.  
-It scales much better for large data.
+This design cleanly separates the control plane (authorization, URL generation) from the data plane (actual byte transfer), 
+and makes it possible to run the whole system locally with no external dependencies.
 
 \paragraph{Browser constraints: CORS and preflight.}
-Because the storage endpoint is a different origin from the web app\footnote{The “origin” is the combination of scheme, host, and port.}, 
-browsers apply the same-origin policy, which blocks requests to other origins unless explicitly allowed.  
-\emph{Cross-Origin Resource Sharing (CORS)} is the standard mechanism to declare such allowances.  
+When using real S3, the storage endpoint is a different origin from the web app\footnote{The ``origin'' is the combination of scheme, host, and port.}, 
+so browsers apply the same-origin policy, which blocks requests to other origins unless explicitly allowed.  
+\emph{Cross-Origin Resource Sharing (CORS)} is the mechanism to declare such allowances.  
 
-In practice, when the app creates a new bucket, it also applies a CORS policy with:  
+In practice, when the app creates a new bucket, it also applies a CORS policy with:
 \begin{itemize}
 	\item \textbf{AllowedOrigins}: exactly the site origin, e.g.\ \texttt{https://lame-fair.k3s.virtualorfeo.it}.  
 	\item \textbf{AllowedMethods}: \texttt{GET}, \texttt{HEAD}, \texttt{PUT}, \texttt{POST}, \texttt{DELETE}, \texttt{OPTIONS}.  
@@ -393,14 +404,15 @@ In practice, when the app creates a new bucket, it also applies a CORS policy wi
 	\item \textbf{MaxAgeSeconds}: 3600, so that the browser can cache the positive preflight result for one hour.  
 \end{itemize}
 
-Browsers enforce CORS in two steps:  
+Browsers enforce CORS in two steps:
 \begin{enumerate}
-	\item For “non-simple” requests (e.g.\ PUT with custom headers), the browser first sends an \texttt{OPTIONS} preflight.  
+	\item For ``non-simple'' requests (e.g.\ PUT with custom headers), the browser first sends an \texttt{OPTIONS} preflight.  
 	\item If the bucket replies with headers matching the above policy, the browser proceeds with the actual upload or download.  
 \end{enumerate}
 
 If the policy is wrong or missing, the browser blocks the request \emph{before} it even reaches the application.  
-This is why bucket creation always refreshes the CORS rules.
+This is why bucket creation always refreshes the CORS rules.  
+In fake-storage mode, this problem disappears: the presigned URLs are same-origin, so no CORS negotiation is required.
 
 \paragraph{Retries and resiliency.}
 The \texttt{boto3} client is configured with \texttt{max\_attempts=3} and \texttt{mode=standard}, 
@@ -431,6 +443,7 @@ This fingerprint can then be used to verify the file later on:
 
 By recording these digests systematically, the application ensures long-term data integrity and 
 provides a trustworthy way to check that scientific data has not been altered.
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -492,8 +505,8 @@ The application provides several tools:
 	\item \textbf{Logs:} enqueueing decisions, job IDs, and completion events are logged.  
 	This makes it possible to trace a measurement from upload to checksum to NeXus conversion.  
 	\item \textbf{Presigned URLs:} when downloads are batched (e.g.\ with aria2 manifests\footnote{\url{https://aria2.github.io/}, a multi-source download utility.}), 
-	the URLs include explicit expiration times.  
-	This ensures that the download window is time-limited and can be audited later.  
+	the URLs include explicit expiration times.
+	This ensures that the download window is limited and that past downloads can be reviewed if needed.  
 \end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -545,8 +558,10 @@ It is a three-pane view defined by \texttt{ManageProposalsView}:
 	(\texttt{ExperimentPane}, \texttt{MeasurementPane}).  
 \end{itemize}
 
+\noindent A visual walkthrough of this interface is provided in the next section.
+
 The board is dynamic thanks to \textbf{HTMX}\footnote{\url{https://htmx.org/}, a small JavaScript library that allows declarative AJAX interactions.}.  
-When the user clicks “create proposal/sample/experiment,” an HTMX-driven modal opens.  
+When the user clicks “create proposal/sample/experiment”, an HTMX-driven modal opens.  
 Submitting the form calls the domain command under the hood.  
 On success, the server returns \texttt{204 No Content} and triggers an \texttt{HX-Trigger}, 
 which closes the modal and refreshes the affected pane.  
@@ -654,6 +669,134 @@ The client-side code is deliberately kept small:
 		\end{tikzpicture}%
 	}
 	\caption{HTMX modal flow. After form submission, the server either replies with \texttt{204 No Content} (success: close modal, refresh pane) or with \texttt{200 OK} and the form HTML filled with errors (failure: modal re-renders).}
+\end{figure}
+
+\subsection{User interface walkthrough}\label{sec:ui-screenshots}
+
+This section illustrates how a user interacts with the application, step by step, 
+from logging in to browsing stored experimental data. 
+The screenshots show the main screens a researcher would encounter during routine use.
+
+The workflow begins with login. Users are first greeted by a minimal login page 
+(Figure~\ref{fig:ui-login}). Authentication is then delegated to Authentik 
+(Figure~\ref{fig:ui-authentik}), which provides single sign-on using OpenID Connect.
+
+\begin{figure}[!h]
+	\centering
+	\includegraphics[width=0.9\textwidth]{img/chpt5/ui_login.png}
+	\caption{Initial login screen of the LAME Data Management App.}
+	\label{fig:ui-login}
+\end{figure}
+
+\begin{figure}[!h]
+	\centering
+	\includegraphics[width=0.9\textwidth]{img/chpt5/ui_authentik.png}
+	\caption{Authentication via Authentik using OpenID Connect.}
+	\label{fig:ui-authentik}
+\end{figure}
+
+\FloatBarrier
+After successful login, users are taken to the dashboard (Figure~\ref{fig:ui-dashboard}), 
+which acts as an entry point to the management board and other functions. 
+If no proposals have been created yet, the board appears empty 
+(Figure~\ref{fig:ui-empty-board}).
+
+\begin{figure}[!h]
+	\centering
+	\includegraphics[width=0.9\textwidth]{img/chpt5/ui_dashboard.png}
+	\caption{Dashboard view after successful login, showing navigation options.}
+	\label{fig:ui-dashboard}
+\end{figure}
+
+\begin{figure}[!h]
+	\centering
+	\includegraphics[width=0.9\textwidth]{img/chpt5/ui_empty_board.png}
+	\caption{Management board before any proposals are created.}
+	\label{fig:ui-empty-board}
+\end{figure}
+
+\FloatBarrier
+New proposals are created via modal dialogs. 
+Figure~\ref{fig:ui-modal-proposal} shows the form for entering the proposal number, 
+principal investigator, and description. 
+Once submitted, the new proposal appears in the left pane of the management board, 
+and its details can be inspected as shown in Figure~\ref{fig:ui-proposal-info}.
+
+\begin{figure}[!h]
+	\centering
+	\includegraphics[width=0.9\textwidth]{img/chpt5/ui_modal_new_proposal.png}
+	\caption{Modal form for creating a new proposal.}
+	\label{fig:ui-modal-proposal}
+\end{figure}
+
+\begin{figure}[!h]
+	\centering
+	\includegraphics[width=0.9\textwidth]{img/chpt5/ui_proposal_info.png}
+	\caption{Viewing details of a created proposal.}
+	\label{fig:ui-proposal-info}
+\end{figure}
+
+\FloatBarrier
+Within a proposal, users can register samples. 
+The modal in Figure~\ref{fig:ui-modal-sample} allows adding a new sample with 
+its metadata. 
+Measurements can then be attached to experiments within each sample. 
+Figure~\ref{fig:ui-add-measurement} shows the interface for creating a measurement entry, 
+which is then linked to raw data files.
+
+\begin{figure}[!h]
+	\centering
+	\includegraphics[width=0.9\textwidth]{img/chpt5/ui_modal_new_sample.png}
+	\caption{Modal form for creating a new sample within a proposal.}
+	\label{fig:ui-modal-sample}
+\end{figure}
+
+\begin{figure}[!h]
+	\centering
+	\includegraphics[width=0.9\textwidth]{img/chpt5/ui_add_measurement.png}
+	\caption{Adding a new measurement under a sample and experiment.}
+	\label{fig:ui-add-measurement}
+\end{figure}
+
+\FloatBarrier
+Raw data, typically TIFF images, is uploaded through a drag-and-drop interface 
+(Figure~\ref{fig:ui-file-picker}). 
+Files are sent directly to object storage using presigned URLs, 
+ensuring efficient transfer without passing through the Django server.
+
+\begin{figure}[!h]
+	\centering
+	\includegraphics[width=0.9\textwidth]{img/chpt5/ui_file_picker.png}
+	\caption{Selecting TIFF files for upload from the local filesystem.}
+	\label{fig:ui-file-picker}
+\end{figure}
+
+\FloatBarrier
+Once data is uploaded, users can browse it in the bucket view. 
+At the top level, proposals are listed with their associated storage buckets 
+(Figure~\ref{fig:ui-bucket-top}). 
+Drilling down, users can see the files belonging to a specific experiment 
+(Figure~\ref{fig:ui-bucket-experiment}), 
+with options to download individual files, stream a ZIP archive, or generate 
+aria2 manifests for high-throughput transfers.  
+
+The same browsing interface is available for the “OFED” (derived data) view, 
+which mirrors the raw data layout but contains NeXus files generated from 
+the uploaded TIFFs. Because its appearance is identical to the raw data browser, 
+we omit a separate screenshot here.
+
+\begin{figure}[!h]
+	\centering
+	\includegraphics[width=0.9\textwidth]{img/chpt5/ui_bucket_top.png}
+	\caption{Top-level view of available proposals in the bucket browser.}
+	\label{fig:ui-bucket-top}
+\end{figure}
+
+\begin{figure}[!h]
+	\centering
+	\includegraphics[width=0.9\textwidth]{img/chpt5/ui_bucket_experiment.png}
+	\caption{Browsing files inside a specific experiment folder, with options for ZIP or fast download.}
+	\label{fig:ui-bucket-experiment}
 \end{figure}
 
 
