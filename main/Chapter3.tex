@@ -1,12 +1,12 @@
-\chapter{Application Platform Choices: \texttt{Django} and \texttt{PostgreSQL}}\label{chap:django}
+\chapter{Application platform choices: \texttt{Django} and \texttt{PostgreSQL}}\label{chap:django}
 
-\section{Why a Web Application for Lab Workflows (Upload + Annotation Together)}
+\section{Why a web application for lab workflows (upload + annotation together)}
 Electron microscopy data are most useful when the raw signals (e.g.\ \texttt{TIFF} images, spectra) and their context (who acquired them, with which settings, on which sample, and for what purpose) are captured together. In practice, however, these two streams often diverge: files accumulate on shared drives while contextual notes sit in lab books or spreadsheets. A web application brings them back into the same place and time. By presenting a form-driven interface in the browser, it allows users to \emph{deposit} raw data and \emph{annotate} it in a single, guided interaction. The form can validate required fields, enforce controlled vocabularies, and provide immediate feedback about missing or inconsistent entries, reducing the need for follow-up and helping the lab converge on shared conventions.
 
 \medskip
-\noindent A web application also makes it straightforward to separate human–computer interaction from heavy processing. Once a deposit has been accepted, the server can proceed to standardized steps such as normalizing field names and units, computing checksums, and constructing a \texttt{NeXus}/\texttt{NXem} file for long-term use, without holding the user’s browser open. Centralizing uploads likewise enables uniform access control, auditing, and the provision of an \emph{application programming interface (API)}\footnote{API: an interface that exposes application capabilities to software clients, allowing automation and integration.} for scripted ingest from acquisition workstations. Finally, a web application fits the laboratory’s \emph{hierarchy of work}: projects group proposals; proposals collect samples; samples lead to experiments; experiments produce measurements. That hierarchy naturally maps to screen flows and to a relational schema, easing the transition from daily practice to durable storage.
+\noindent A web application also makes it straightforward to separate human–computer interaction from heavier processing. Once a deposit has been accepted, the server can take over the structured steps needed for durable storage, without holding the user’s browser open. Centralizing uploads likewise enables uniform access control, consistent record-keeping, and the provision of an \emph{application programming interface (API)}\footnote{API: an interface that exposes application capabilities to software clients, allowing automation and integration.} for scripted ingest from acquisition workstations. Finally, a web application can mirror the laboratory’s working practices in its interface and underlying database, so that daily activities map naturally onto durable storage structures. The concrete hierarchy used in this project is described later in Chapter~\ref{chap:deep-dive-app}.
 
-\section{\texttt{Django}: Model–View–Template and Project Layout}
+\section{\texttt{Django}: Model–View–Template and project layout}
 
 \texttt{Django} is a Python web framework designed to encourage clear separation of concerns and fast iteration \parencite{DjangoAtAGlance}. Its architectural pattern is called \emph{Model–View–Template (MVT)} \parencite{DjangoFAQMVC}. This separates the application into three main components:
 
@@ -156,7 +156,7 @@ After evaluating the options, we decided to use \textbf{PostgreSQL} as the datab
 	\end{itemize}
 \end{itemize} 
 
-The configuration is straightforward – we installed the \texttt{psycopg2} adapter (which allows Django to talk to Postgres) and updated our \texttt{DATABASES} setting in Django to use the \texttt{'django.db.backends.postgresql'} engine with the appropriate credentials. Django handles the rest through its ORM, so all our data models defined in Python were automatically translated into PostgreSQL tables via migrations. Overall, PostgreSQL provides a solid foundation for storing the application’s critical data, offering both peace of mind (in terms of reliability) and powerful capabilities if we need them down the road.
+The configuration is straightforward – we installed the \texttt{psycopg2} adapter (which allows Django to talk to Postgres) and updated our \texttt{DATABASES} setting in Django to use the \texttt{django.\allowbreak db.\allowbreak backends.\allowbreak postgresql} engine with the appropriate credentials. Django handles the rest through its ORM, so all our data models defined in Python were automatically translated into PostgreSQL tables via migrations. Overall, PostgreSQL provides a solid foundation for storing the application’s critical data, offering both peace of mind (in terms of reliability) and powerful capabilities if we need them down the road.
 
 \subsection{Django’s ORM (Object-Relational Mapper)} 
 

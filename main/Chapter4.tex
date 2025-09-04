@@ -24,191 +24,211 @@ In practice, VirtualOrfeo provides a controlled environment to connect our Djang
 
 \section{K3s Cluster Topology in the Virtual Environment}
 
-At the heart of VirtualOrfeo is a Kubernetes cluster deployed on one of the 
-virtual machines (or across a couple of VMs) using \textbf{K3s}. K3s is a 
-lightweight, certified Kubernetes distribution designed for resource-constrained 
-or edge environments\parencite{Rancher2021K3s}. Unlike a full-fledged multi-node 
-Kubernetes deployment, K3s packages the essential components into a single, 
-easy-to-install binary, reducing the complexity and footprint of the cluster. In 
-VirtualOrfeo, this K3s cluster provides the platform on which our web application 
+At the heart of VirtualOrfeo is a Kubernetes cluster deployed on one of the
+virtual machines (or across a couple of VMs) using \textbf{K3s}. K3s is a
+lightweight, certified Kubernetes distribution designed for resource-constrained
+or edge environments\parencite{Rancher2021K3s}. Unlike a full-fledged multi-node
+Kubernetes deployment, K3s packages the essential components into a single,
+easy-to-install binary, reducing the complexity and footprint of the cluster. In
+VirtualOrfeo, this K3s cluster provides the platform on which our web application
 and related services are orchestrated as containers.
 
 \medskip
 
-The cluster topology is relatively simple. In our setup:  
+The cluster topology is relatively simple. In our setup:
 \begin{itemize}
-	\item A single VM (\texttt{kube01}) acts as the Kubernetes control-plane node 
-	and also runs as a worker node. This means the API server, scheduler, and 
-	controller-manager run on that VM, and it also hosts the application pods. 
-	(The K3s design allows one to add additional worker nodes easily if needed, 
+	\item A single VM (\texttt{kube01}) acts as the Kubernetes control-plane node
+	and also runs as a worker node. This means the API server, scheduler, and
+	controller-manager run on that VM, and it also hosts the application pods.
+	(The K3s design allows one to add additional worker nodes easily if needed,
 	but one node is sufficient for testing purposes.)
-	\item Another VM (\texttt{ipa01}) runs the identity management services 
+	\item Another VM (\texttt{ipa01}) runs the identity management services
 	(discussed later).
-	\item Additional VMs can be spun up for storage or other auxiliary roles 
-	(e.g., Ceph OSD servers).
+	\item Additional VMs can be spun up for storage or other auxiliary roles
+	(e.g.\ Ceph OSD servers).
 \end{itemize}
 
-All these VMs are connected via a private virtual network so that services can 
-reach each other using hostnames like \texttt{ipa01.virtualorfeo.it} or 
+All these VMs are connected via a private virtual network so that services can
+reach each other using hostnames like \texttt{ipa01.virtualorfeo.it} or
 \texttt{kube01.virtualorfeo.it}.
 
 \medskip
 
-Within the K3s cluster, we adopt a logical separation of concerns using 
-Kubernetes \textbf{namespaces}. For example, the Authentik identity provider is 
-deployed in its own namespace (called \texttt{authentik}), and our Django 
-application is deployed in another namespace (e.g.\ \texttt{lame-fair} for our 
-``FAIR data'' app). Namespaces provide isolation for configuration and secrets, 
-and they help mirror the structure of a real cluster where different services 
+Within the K3s cluster, we adopt a logical separation of concerns using
+Kubernetes \textbf{namespaces}. For example, the Authentik identity provider is
+deployed in its own namespace (called \texttt{authentik}), and our Django
+application is deployed in another namespace (e.g.\ \texttt{lame-fair} for our
+``FAIR data'' app). Namespaces provide isolation for configuration and secrets,
+and they help mirror the structure of a real cluster where different services
 might be managed by different teams.
 
 \medskip
 
-To allow external access to services running in K3s (which by default would only 
-be reachable inside the cluster network), VirtualOrfeo makes use of a Kubernetes 
-\textbf{Ingress} controller together with MetalLB for load-balancing. The ingress 
-controller (NGINX in our case) listens on a cluster IP address and routes 
-incoming HTTP/HTTPS requests to the appropriate service based on hostname. 
+To make services in K3s reachable from outside the cluster (by default they can only be accessed inside the Kubernetes network), the VirtualOrfeo setup uses two key components: a Kubernetes \textbf{Ingress}\footnote{%
+	In Kubernetes, an \emph{Ingress} is a component that accepts incoming web traffic (HTTP/HTTPS) from outside the cluster and routes it to the correct service inside the cluster, based on the hostname or URL path.} controller, and a software load-balancer called \textbf{MetalLB}\footnote{%
+	MetalLB is an open-source load balancer for Kubernetes in bare-metal or virtualized environments. It allows cluster services to be assigned real IP addresses on the local network, instead of being confined to internal-only addresses.}.
 
-MetalLB is a software load-balancer that can allocate a virtual IP address to 
-the ingress controller on the local network. In the virtual environment we 
-reserve an IP (for example, 192.168.132.100) as the ingress IP for all services. 
-We then define DNS entries (or simply \texttt{/etc/hosts} mappings during 
-development) such as:  
+The ingress controller (NGINX in our case) listens on a special “cluster IP address” and forwards incoming requests to the right service, based on the hostname in the URL. For example, a request to \texttt{lame-fair.k3s.virtualorfeo.it} should go to our Django application, while a request to \texttt{minio.k3s.virtualorfeo.it} should go to the object storage service.
+
+MetalLB assigns a single virtual IP address (for example \texttt{192.168.132.100}) to the ingress controller. That IP is reserved on the local network and represents the “entry point” for all external requests.
+
+To make this usable from a browser, we define DNS entries\footnote{%
+	DNS (Domain Name System) is the distributed naming system of the internet: it translates human-friendly names such as \texttt{lame-fair.k3s.virtualorfeo.it} into the numeric IP address (\texttt{192.168.132.100}) that computers use to connect.} (or, during development, simple \texttt{/etc/hosts}\footnote{%
+	The \texttt{/etc/hosts} file is a local configuration file on Linux, macOS, and other Unix-like systems. It can override DNS by mapping hostnames to IP addresses directly on one machine.} mappings). Example entries are:
+
 \begin{itemize}
-	\item \texttt{auth.k3s.virtualorfeo.it}  
-	\item \texttt{lame-fair.k3s.virtualorfeo.it}  
-	\item \texttt{minio.k3s.virtualorfeo.it}  
+	\item \texttt{auth.k3s.virtualorfeo.it}
+	\item \texttt{lame-fair.k3s.virtualorfeo.it}
+	\item \texttt{minio.k3s.virtualorfeo.it}
 \end{itemize}
 
-All these hostnames point to the same ingress IP. This way, when we access 
-\texttt{https://lame-fair.k3s.virtualorfeo.it} in a browser, the request hits the 
-NGINX ingress on the K3s VM, which forwards it to the correct Kubernetes Service 
-(our Django app service) within the cluster. 
-
-The use of host-based routing and TLS termination at the ingress level mimics 
-how services would be exposed in a production environment (with real DNS 
-entries). The certificates used for TLS in VirtualOrfeo are issued by a local 
-Certificate Authority (the FreeIPA server, acting as a CA), so that we have 
-proper HTTPS without needing internet access. We configured 
-\textbf{cert-manager} on the cluster to obtain and refresh certificates from 
-this internal CA via the ACME protocol, automating the issuance of TLS 
-certificates for all service hostnames.
+All these hostnames point to the same ingress IP (\texttt{192.168.132.100}). The NGINX ingress then looks at the hostname of the request to decide which service to send it to. In practice, if we open \texttt{https://lame-fair.k3s.virtualorfeo.it}, the request reaches the ingress controller on the cluster VM, which forwards it to the Django service inside Kubernetes.
 
 \medskip
 
-In terms of storage for the cluster, K3s provides a default storage class (built 
-on local disk storage via the ``local-path'' provisioner), which we use for most 
-purposes. For example, the PostgreSQL database backing our Django app uses a 
-PersistentVolumeClaim that by default binds to local storage on 
-\texttt{kube01}. This is acceptable in a virtual environment where data 
-persistence is not mission-critical. 
+Because these services are accessed over \textbf{HTTPS}, they also need
+\textbf{TLS certificates}\footnote{TLS (Transport Layer Security) is the standard protocol that secures web traffic over HTTPS. It ensures that the communication between a browser and a server is encrypted and cannot be intercepted or modified by third parties. A TLS certificate is a digital credential that proves a site’s identity and enables this secure communication.}.
+In VirtualOrfeo, the certificates are issued by a local Certificate Authority (the FreeIPA server, acting as a CA). This gives us proper HTTPS without relying on the public internet. We configured
+\textbf{cert-manager} in the cluster to automatically request and refresh TLS
+certificates from this internal CA using the ACME protocol, so that every service
+hostname always has a valid certificate.
 
-Optionally, VirtualOrfeo’s Ceph deployment could be integrated via a Container 
-Storage Interface (CSI) driver to supply distributed block storage (RBD volumes) 
-or shared filesystem volumes (CephFS) to the cluster, thereby simulating a more 
-production-like storage backend. However, to keep things simple, our deployment 
-mostly relies on the out-of-the-box storage provisioner for now. The key storage 
-integration we do leverage is object storage (Ceph’s RADOS Gateway), which will 
+\medskip
+
+In terms of storage for the cluster, K3s provides a default storage class (built
+on local disk storage via the ``local-path'' provisioner), which we use for most
+purposes. For example, the PostgreSQL database backing our Django app uses a
+PersistentVolumeClaim that by default binds to local storage on
+\texttt{kube01}. This is acceptable in a virtual environment where data
+persistence is not mission-critical.
+
+Optionally, VirtualOrfeo’s Ceph deployment could be integrated via a Container
+Storage Interface (CSI) driver to supply distributed block storage (RBD volumes)
+or shared filesystem volumes (CephFS) to the cluster, thereby simulating a more
+production-like storage backend. However, to keep things simple, our deployment
+mostly relies on the out-of-the-box storage provisioner for now. The key storage
+integration we do leverage is object storage (Ceph’s RADOS Gateway), which will
 be discussed in Section~\ref{sec:virtualorfeo-storage}.
 
 \medskip
 
-To summarize the topology: VirtualOrfeo’s Kubernetes is a lightweight cluster 
-hosting multiple namespaces (for Authentik, the Django app, monitoring tools, 
-etc.), all accessible through an NGINX ingress on a single IP. The infrastructure 
-pieces such as load balancing and certificate management are in place so that 
-each service behaves as if it were in a normal production cluster with distinct 
-hostnames and TLS. This setup allows our application to be deployed with the 
-same Helm charts and configurations that we would use on a real cluster, 
-providing high confidence that the behavior will be consistent when transitioning 
-to production.
-
-
-\medskip
-\noindent With the cluster topology in place, we can turn to the auxiliary services 
-that make the environment resemble a production HPC setting. 
-We begin with identity and access management, which provides 
-centralized authentication across the system.
+To summarize the topology: VirtualOrfeo’s Kubernetes is a lightweight cluster
+hosting multiple namespaces (for Authentik, the Django app, monitoring tools,
+etc.), all accessible through an NGINX ingress on a single IP. The infrastructure
+pieces such as load balancing and certificate management are in place so that
+each service behaves as if it were in a normal production cluster with distinct
+hostnames and HTTPS secured by TLS. This setup allows our application to be
+deployed with the same Helm charts and configurations that we would use on a
+real cluster, providing high confidence that the behavior will be consistent when
+transitioning to production.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Identity and Access Management in VirtualOrfeo} \label{sec:virtualorfeo-iam}
 
-The VirtualOrfeo environment includes a full \textbf{Identity and Access Management (IAM)} stack to mirror the authentication system of the production cluster. In this setup, we combine \textbf{FreeIPA} for directory services (accounts and groups) with \textbf{Authentik} as an OpenID Connect (OIDC) identity provider. 
-
-FreeIPA is an open-source identity management solution that provides an LDAP directory and a Kerberos realm for centralized authentication. It can be considered the upstream community version of Red Hat Identity Manager. Authentik is an open-source identity provider that supports single sign-on using modern protocols such as OAuth2, OIDC, and also SAML.  
-
-Together, these two systems simulate an enterprise-style authentication service. FreeIPA serves as the authoritative source of user identities (through LDAP), while Authentik acts as the user-facing login portal and token issuer for web applications.
+As outlined in Chapter~\ref{chap:infra}, ORFEO relies on a combination of 
+\textbf{FreeIPA} (as the authoritative directory for users and groups) and 
+\textbf{Authentik} (as an OIDC identity provider) for identity and access 
+management. VirtualOrfeo mirrors this arrangement so that authentication and 
+authorization behave in the same way as in production. The focus here is on 
+the practical steps required to deploy and integrate these services in the 
+virtual environment, rather than reintroducing the concepts already discussed 
+in Section~2.X. 
 
 \medskip
 
-In the VirtualOrfeo setup, the FreeIPA server runs on the VM \texttt{ipa01}. It maintains a directory of user accounts and groups. For testing, dummy users can be created in FreeIPA (the Ansible scripts even set up some by default). FreeIPA also doubles as a Certificate Authority, issuing TLS certificates for services.  
+In VirtualOrfeo, the FreeIPA server runs on the VM \texttt{ipa01}. It maintains 
+the user directory and also acts as a Certificate Authority, issuing TLS 
+certificates for services. For testing, dummy users can be created in FreeIPA 
+(some are provisioned automatically by Ansible).  
 
-On the Kubernetes (K3s) side, Authentik is deployed via Helm in the \texttt{authentik} namespace. After deployment, a one-time initial configuration is required:  
+On the Kubernetes (K3s) side, Authentik is deployed via Helm in the 
+\texttt{authentik} namespace. After deployment, a one-time initial configuration 
+is required:
 
 \begin{itemize}
 	\item \textbf{Bind account for LDAP access:}  
-	We create a dedicated service account in FreeIPA (e.g.\ \texttt{svc\_authentik}) for Authentik to use when binding to LDAP. This account is granted read permissions on users and groups (we added it to the ``User Administrators'' role). Authentik uses this account to synchronize users and to check passwords during login.  
+	A dedicated service account in FreeIPA (e.g.\ \texttt{svc\_authentik}) is 
+	created for Authentik. This account has read permissions on users and groups 
+	(added to the ``User Administrators'' role). Authentik uses it to bind to LDAP, 
+	synchronize identities, and check credentials during login.  
 	
 	\item \textbf{LDAP source configuration in Authentik:}  
-	In the Authentik admin interface, we add an LDAP Directory source pointing to the FreeIPA server. We configure:  
+	In the Authentik admin interface, we configure an LDAP Directory source 
+	pointing to the FreeIPA server:  
 	\begin{itemize}
-		\item the LDAPS URL (\texttt{ldaps://ipa01.virtualorfeo.it}),  
-		\item the Base DN (e.g.\ \texttt{dc=virtualorfeo,dc=it}),  
-		\item the Bind DN (\texttt{uid=svc\_authentik,cn=users,cn=accounts,...}) and password,  
-		\item the attribute mapping (username $\rightarrow$ \texttt{uid}, email $\rightarrow$ \texttt{mail}, full name, groups).  
-	\end{itemize}  
-	Authentik ships with templates for FreeIPA/389ds, which simplifies this step. We enabled both user and group synchronization, and then triggered an initial sync: all existing FreeIPA users and groups were imported into Authentik.  
+		\item LDAPS URL (\texttt{ldaps://ipa01.virtualorfeo.it}),  
+		\item Base DN (e.g.\ \texttt{dc=virtualorfeo,dc=it}),  
+		\item Bind DN (\texttt{uid=svc\_authentik,cn=users,cn=accounts,...}) and 
+		password,  
+		\item Attribute mapping (username $\rightarrow$ \texttt{uid}, email 
+		$\rightarrow$ \texttt{mail}, full name, groups).  
+	\end{itemize}
+	User and group synchronization was enabled, and after the initial sync, all 
+	FreeIPA users and groups were imported into Authentik.  
 	
 	\item \textbf{Federation of FreeIPA with Authentik:}  
-	Once this sync is configured, any FreeIPA user can log into Authentik. Credentials are checked against FreeIPA, while Authentik manages sessions and tokens. Effectively, FreeIPA remains the backend store, and Authentik acts as the OIDC-facing layer.  
+	Once synchronization is active, any FreeIPA user can log into Authentik. 
+	Authentication requests are validated against FreeIPA, while Authentik 
+	manages sessions and issues tokens. FreeIPA thus remains the backend store, 
+	and Authentik provides the OIDC-facing layer.  
 	
 	\item \textbf{Registering the Django app as an OIDC client:}  
-	We register our Django application in Authentik by creating a new Application entry (``Lame Fair'') and associating it with an OAuth2/OIDC Provider. Configuration details include:  
+	We registered the Django application in Authentik as an OAuth2/OIDC client 
+	(``Lame Fair'') with the following configuration:  
 	\begin{itemize}
-		\item \textbf{Client type:} Confidential (the app can securely store a client secret).  
+		\item \textbf{Client type:} Confidential.  
 		\item \textbf{Redirect URIs:}  
-		\begin{itemize}
-			\item \texttt{https://lame-fair.k3s.virtualorfeo.it/oidc/callback/}
-			\item \texttt{https://lame-fair.k3s.virtualorfeo.it/}
-		\end{itemize}
-		\item \textbf{Flow:} Authorization Code flow with explicit user consent (OIDC default).  
+		\texttt{https://lame-fair.k3s.virtualorfeo.it/oidc/callback/},  
+		\texttt{https://lame-fair.k3s.virtualorfeo.it/}.  
+		\item \textbf{Flow:} Authorization Code flow with explicit consent.  
 	\end{itemize}
-	
-	Authentik then generates a Client ID and Client Secret, which we inject into the Django deployment as Kubernetes secrets.  
+	Authentik generated a Client ID and Client Secret, which we stored in 
+	Kubernetes Secrets for injection into the Django deployment.  
 	
 	\item \textbf{Scopes and claims:}  
-	We enabled the standard \texttt{openid} scope plus \texttt{email}, \texttt{profile}, and \texttt{offline\_access}. This ensures the ID token includes email and profile data, and allows refresh tokens for long-lived sessions.  
-	We also configured claims mapping so that the ID token carries \texttt{preferred\_username} and \texttt{email}. Group memberships could also be mapped to a claim (e.g.\ \texttt{groups}) to drive role-based access in the app. While not strictly required here, the data is synchronized and could support advanced authorization (e.g.\ marking members of a ``app-admins'' group as administrators).  
+	We enabled the standard \texttt{openid} scope plus \texttt{email}, 
+	\texttt{profile}, and \texttt{offline\_access}. This ensures that ID tokens 
+	include basic identity information and support refresh tokens. Claims were 
+	mapped so that tokens carry \texttt{preferred\_username} and \texttt{email}. 
+	Group membership could also be added (e.g.\ for role-based access), though it 
+	was not required for our current application.  
 \end{itemize}
 
 \medskip
 
-Once configured, the login flow for our web application works as follows:  
+Once configured, the login flow works as follows:  
 \begin{itemize}
-	\item The Django app redirects the user to Authentik’s OIDC authorization endpoint.  
-	\item Authentik displays a login form and validates credentials against FreeIPA.  
-	\item If successful, Authentik issues an authorization code and returns it to the app’s callback URL.  
-	\item The Django app exchanges the code for an ID Token (and optionally an Access Token).  
-	\item The ID Token is a JSON Web Token (JWT), signed by Authentik, containing identity claims such as username and email \parencite{OpenIDConnectCore}.  
-	\item Django verifies the token using Authentik’s public key and logs the user in (creating a local session or record if necessary).  
+	\item The Django app redirects users to Authentik’s OIDC authorization 
+	endpoint.  
+	\item Authentik presents a login form and validates credentials against 
+	FreeIPA.  
+	\item Upon success, Authentik issues an authorization code, which the app 
+	exchanges for an ID Token (JWT).  
+	\item Django validates the token using Authentik’s public key and logs the 
+	user in.  
 \end{itemize}
 
-From this point on, the user is authenticated in the Django app. Credentials are never handled by the application itself; authentication is delegated to Authentik and FreeIPA. This improves security, enables single sign-on across services, and ensures that disabling a FreeIPA account immediately prevents further access to the application.
+At no point does the Django app handle raw credentials; authentication is 
+delegated to Authentik and FreeIPA. This setup enables secure single sign-on 
+(SSO), ensures immediate revocation when a FreeIPA account is disabled, and 
+mirrors the IAM pattern described in Chapter~\ref{chap:infra}.
 
 \medskip
 
-The VirtualOrfeo IAM configuration demonstrates the architecture outlined earlier in Section~\ref{sec:virtualorfeo-iam-design}, now realized in practice. We have established a trust between the Django application and Authentik via OIDC, and another trust between Authentik and FreeIPA via LDAP. FreeIPA remains the central source of truth for credentials, while Authentik provides the web-facing authentication layer and token issuance.  
-
-This approach can be directly replicated in production. Other identity providers (such as Keycloak) could substitute for Authentik, but the principle remains the same: keep FreeIPA as the authoritative store, and place a modern IdP in front to provide OIDC/OAuth-based authentication for applications.
+In summary, the VirtualOrfeo IAM stack demonstrates the same 
+directory\,$\rightarrow$\,IdP integration used in production, but applied in a 
+safe, virtualized environment. This validates that our Django application can 
+integrate seamlessly with FreeIPA/Authentik, and confirms that the same 
+deployment model can be carried over to ORFEO or replicated with other IdPs such 
+as Keycloak.
 
 \medskip
-\noindent Once authentication and identity services are integrated, 
-the next step is to ensure that applications can interact 
-with persistent storage in a reliable and secure way. 
-We therefore examine how VirtualOrfeo incorporates object storage 
-to mirror the production environment.
+\noindent With authentication and identity services in place, the next step is 
+to ensure that applications can interact with persistent storage in a reliable 
+and secure way. We therefore examine how VirtualOrfeo incorporates object 
+storage to mirror the production environment.
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -223,9 +243,11 @@ system to provide a multi-purpose storage backend. Ceph is a widely used
 open-source distributed storage platform that can provide object storage, block 
 storage, and file system interfaces within a unified cluster 
 \parencite{Weil2006Ceph}. We focus on Ceph’s object storage interface, which is 
-provided by the \textbf{RADOS Gateway (RGW)} component. The RGW exposes a 
-RESTful API compatible with Amazon S3, meaning our application can interact with 
-it as if it were talking to AWS S3, but the data is stored on-premise in Ceph.
+provided by the \textbf{RADOS Gateway (RGW)} component. The RGW exposes an API 
+compatible with Amazon S3, meaning our application can interact with it as if it 
+were talking to AWS S3, but the data is stored on-premise in Ceph. A broader 
+discussion of RESTful APIs is given later in Section~\ref{sec:api-ui}.
+
 
 \medskip
 
@@ -449,7 +471,9 @@ At deployment time, we supply several categories of information to the applicati
 	\begin{itemize}
 		\item whether the app runs in debug mode,  
 		\item the allowed hostnames,  
-		\item the OIDC callback URL and issuer URL (e.g.\ \texttt{AUTHENTIK\_SERVER\_URL=https://auth.k3s.virtualorfeo.it}).  
+		\item the OIDC callback URL and issuer URL
+		
+		(e.g.\ \texttt{AUTHENTIK\_SERVER\_URL=https://auth.k3s.virtualorfeo.it}).  
 	\end{itemize}  
 	These are set as environment variables (e.g.\ \texttt{DJANGO\_SETTINGS\_MODULE}, \texttt{DJANGO\_DEBUG}) via the Helm chart’s \texttt{configmap-env.yaml}.
 	
