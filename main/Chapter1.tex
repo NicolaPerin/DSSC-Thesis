@@ -1,11 +1,11 @@
-\chapter{Foundations and Context}
+\chapter{Foundations and context}
 \label{chap:foundations}
 
 This chapter situates our work within the broader landscape of data management in electron microscopy. 
 It discusses the challenges of handling modern EM datasets, introduces the FAIR data principles and related initiatives, describes relevant standards for data and metadata, and presents the institutional setting in which our project operates.
 
 %--------------------------------------------------
-\section{Data Management Challenges in Electron Microscopy}
+\section{Data management challenges in electron microscopy}
 
 Electron microscopy facilities routinely generate large, heterogeneous datasets: images, diffraction patterns, spectrum images (4D--STEM), EDS maps, and EELS hyper-spectra. 
 A single session can yield hundreds of megabytes to tens of gigabytes of data \parencite{Poger2023BigDataEM}. 
@@ -28,7 +28,7 @@ Within LAME at Area Science Park, the concrete needs that emerge from day-to-day
 Meeting these needs requires standardized file formats and workflows that begin at the point of data creation, not at publication.
 
 %--------------------------------------------------
-\section{FAIR Data and National Initiatives}
+\section{FAIR data and national initiatives}
 
 The FAIR principles (data should be \textbf{F}indable, \textbf{A}ccessible, \textbf{I}nteroperable, and \textbf{R}eusable) provide a framework for addressing these challenges \parencite{Wilkinson2016FAIR,GOFAIRPrinciples}. 
 In practice, FAIR means using persistent identifiers, standardized metadata, and open or well-documented formats, and depositing data in searchable repositories \parencite{EC2018TurningFAIR,EC2021HEGuide}. 
@@ -45,18 +45,18 @@ Its contributions to the \texttt{NXem} definition give laboratories concrete tem
 Aligning local workflows with these initiatives increases interoperability and prepares laboratories for transparent data exchange across national and European portals.
 
 %--------------------------------------------------
-\section{Electron Microscopy Instrumentation}
+\section{Electron microscopy instrumentation}
 
 Electron microscopy supports nanoscience with imaging and spectroscopy at the atomic scale. 
 A brief overview of the modalities available at LAME clarifies the sources and structure of the data to be managed.
 
-\subsection{Transmission Electron Microscopy (TEM)}
+\subsection{Transmission electron microscopy (TEM)}
 
 In TEM, electrons accelerated to 80--300 keV traverse thin specimens, producing real-space images with near-atomic resolution \parencite{EMoverview}. 
 By adjusting the lens system, selected-area or nano-beam electron diffraction (ED) patterns can be recorded, revealing lattice spacings and crystal symmetry. 
 Modern instruments, such as those at LAME, allow rapid switching between imaging and diffraction within a single session.
 
-\subsection{Scanning Transmission Electron Microscopy (STEM)}
+\subsection{Scanning transmission electron microscopy (STEM)}
 
 In STEM, a focused probe is raster-scanned across the sample while detectors collect signals at each position \parencite{EMoverview}. 
 High-angle annular dark-field (HAADF) and bright-field (BF) imaging modes provide complementary contrast mechanisms. 
@@ -65,7 +65,7 @@ Hybrid-pixel direct detectors further support 4D-STEM, where full diffraction pa
 These volumes demand disciplined metadata tracking and standardized storage.
 
 %--------------------------------------------------
-\section{Data Standards: HDF5, NeXus, and NXem}
+\section{Data standards: HDF5, NeXus, and NXem}
 
 Large-scale electron microscopy experiments produce not only very large files, but also complex combinations of raw signals and contextual information. 
 To make such datasets usable over the long term, they need to be stored in formats that can handle both high-volume numerical arrays (such as images or spectra) and descriptive metadata (such as microscope settings or sample details). 
@@ -109,7 +109,7 @@ To facilitate adoption, community-developed libraries such as \texttt{pynxtools-
 This lowers the barrier for laboratories to transition from raw vendor files to standardized, FAIR-compliant NeXus/NXem containers.
 
 %--------------------------------------------------
-\section{Institutional Context: Area Science Park and RIT}
+\section{Institutional context: Area Science Park and RIT}
 
 The implementation of a FAIR data workflow at LAME is supported by the organizational context within Area Science Park. Specifically, the project is carried out under AREA’s Institute for Research and Technological Innovation (RIT – Istituto per la Ricerca e l’Innovazione Tecnologica). RIT is a multi-disciplinary research institute within Area Science Park that focuses on cutting-edge R\&D and provides advanced services to external partners. It is structured into several laboratories equipped with state-of-the-art technologies. The three key labs under RIT, each with a specialized domain, are:
 

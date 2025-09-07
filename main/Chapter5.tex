@@ -1,6 +1,6 @@
-\chapter{Deep Dive into the Application}\label{chap:deep-dive-app}
+\chapter{Deep dive into the application}\label{chap:deep-dive-app}
 
-This chapter gives a detailed, implementation-focused look at the Django application for experimental data management. 
+This chapter gives an implementation-focused look at the Django application for experimental data management. 
 The system is built with a layered architecture that separates business rules, storage access, background processing, and presentation. 
 It connects to an external identity provider (Authentik via OIDC), stores both raw and derived data in an S3-compatible object store (Ceph RGW/MinIO), 
 and uses Redis Queue (RQ) for asynchronous tasks.
@@ -96,6 +96,34 @@ The typical sequence of actions is:
 	and creates it if it does not exist. Derived artefacts such as NeXus files are uploaded here, 
 	keeping them separate from raw data. The \texttt{/ofed/} view lets users browse this mirrored namespace.
 \end{enumerate}
+	
+\begin{figure}[h]
+	\centering
+	\resizebox{0.9\textwidth}{!}{%
+		\begin{tikzpicture}[
+			node distance=1.4cm and 2.2cm,
+			every node/.style={font=\sffamily},
+			box/.style={draw, rounded corners, align=center, minimum width=3.5cm, minimum height=1cm}
+			]
+			
+			% Nodes
+			\node[box, fill=green!20] (user) {User actions \\ (forms + file upload)};
+			\node[box, fill=blue!20, right=of user] (entities) {Domain entities \\ (Project, Proposal, \\Sample, Experiment)};
+			\node[box, fill=orange!20, right=of entities] (db) {Database \\ (PostgreSQL)};
+			\node[box, fill=gray!20, below=of entities] (raw) {Raw bucket \\ (TIFFs + README)};
+			\node[box, fill=gray!20, right=of raw] (mirror) {Mirror bucket \\ (NeXus + checksums)};
+			
+			% Arrows
+			\draw[->] (user) -- (entities) node[midway, above] {create/register};
+			\draw[->] (entities) -- (db) node[midway, above] {metadata};
+			\draw[->] (entities) -- (raw) node[midway, left] {upload files};
+			\draw[->] (raw) -- (mirror) node[midway, below] {derived data};
+			
+		\end{tikzpicture}%
+	}
+	\caption{Simplified pipeline overview. Users create entities and upload raw data, which is stored alongside metadata in the database and raw buckets. Derived NeXus files and checksums are stored in mirror buckets.}
+	\label{fig:pipeline-overview}
+\end{figure}
 
 \paragraph{Consistency and error handling.}
 Domain commands always validate inputs before writing, so users get clear error messages instead of database errors.  
@@ -139,6 +167,37 @@ The mapping layer is responsible for filling this structure by translating the r
 \end{itemize}
 
 By moving the instrument-specific rules into data files, the builder code stays simple, reusable, and easy to test.
+
+\begin{figure}[h]
+	\centering
+	\resizebox{0.9\textwidth}{!}{%
+		\begin{tikzpicture}[
+			node distance=1.2cm,
+			every node/.style={font=\sffamily},
+			box/.style={draw, rounded corners, align=center, minimum width=3.5cm, minimum height=1cm}
+			]
+			
+			% Nodes
+			\node[box, fill=gray!20] (tiff) {Raw TIFF file(s)};
+			\node[box, fill=blue!20, right=2.5cm of tiff] (extract) {Metadata extraction \\ (TIFF headers, JSON blocks)};
+			\node[box, fill=orange!20, below=of extract] (mapping) {Mapping layer \\ (JSON mapping file)};
+			\node[box, fill=yellow!20, right=2.5cm of mapping] (normalize) {Normalization \\ (units, datatypes, defaults)};
+			\node[box, fill=green!20, below=of mapping] (nexus) {NXem / NeXus file structure};
+			
+			% Arrows
+			\draw[->] (tiff) -- (extract) node[midway, above] {read headers};
+			\draw[->] (extract) -- (mapping) node[midway, right] {source keys};
+			\draw[->] (mapping) -- (nexus) node[midway, right] {target fields};
+			\draw[->] (mapping.east) -- (normalize.west) node[midway, above] {apply rules};
+			\draw[->] (normalize.south) |- (nexus.east) node[midway, above] {clean values};
+			
+		\end{tikzpicture}%
+	}
+	\caption{Metadata flow during ingestion. Raw TIFF headers are extracted and flattened, 
+		mapped through instrument-specific JSON files, optionally normalized, 
+		and written into the standardized NXem/NeXus structure.}
+	\label{fig:metadata-flow}
+\end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -475,6 +534,49 @@ The key background tasks are:
 	(mapping, scaffold population, and publishing into the mirror bucket; see \S\ref{sec:nexus-construction}).  
 \end{itemize}
 
+\begin{figure}[h]
+	\centering
+	\resizebox{0.9\textwidth}{!}{%
+		\begin{tikzpicture}[
+			node distance=1.2cm and 2.0cm,
+			every node/.style={font=\sffamily},
+			box/.style={draw, rounded corners, align=center, minimum width=4cm, minimum height=1cm}
+			]
+			
+			% User/browser
+			\node[box, fill=green!20] (browser) {User in browser \\ (HTMX modal / Uppy uploader)};
+			
+			% Django app
+			\node[box, fill=blue!20, below=of browser] (django) {Django view \\ (domain command + validation)};
+			
+			% Redis and workers (left side)
+			\node[box, fill=orange!20, below left=2.2cm and 2.5cm of django] (redis) {Redis Queue (RQ) \\ job queue};
+			\node[box, fill=gray!20, below=of redis] (workers) {RQ Workers \\ (Python processes)};
+			
+			% Background tasks (center)
+			\node[box, fill=yellow!20, below=3.5cm of django] (tasks) {Background tasks \\ 
+				- compute\_checksum \\ 
+				- make\_nexus\_from\_tiff};
+			
+			% Database and storage (bottom layer)
+			\node[box, fill=purple!10, below left=2.5cm and 1.5cm of tasks] (db) {PostgreSQL database};
+			\node[box, fill=purple!15, below right=2.5cm and 1.5cm of tasks] (s3) {Object storage \\ (Ceph RGW / MinIO)};
+			
+			% Arrows
+			\draw[->] (browser) -- (django) node[midway, right] {form submit / upload};
+			\draw[->] (django.west) .. controls +(left:2cm) and +(up:1cm) .. (redis.north) node[midway, above left] {enqueue job};
+			\draw[->] (redis) -- (workers);
+			\draw[->] (workers.east) -- (tasks.west) node[midway, right] {execute};
+			\draw[->] (django) -- (tasks.north) node[midway, right] {register metadata};
+			\draw[->] (tasks.south west) -- (db.north) node[midway, left] {write metadata};
+			\draw[->] (tasks.south east) -- (s3.north) node[midway, right] {upload files, checksums};
+			
+		\end{tikzpicture}%
+	}
+	\caption{Flow of background tasks. An action in the browser (via HTMX or Uppy) calls a Django view, which validates input and enqueues jobs into Redis RQ. Worker processes execute tasks such as computing checksums or building NeXus files, writing results to the database and object storage.}
+	\label{fig:background-tasks-flow}
+\end{figure}
+
 Because workers are decoupled from web requests, the user interface stays responsive 
 even if the actual job involves gigabytes of data or many minutes of processing.  
 RQ requires that all task functions be importable by workers; this is why they are all exposed under 
@@ -605,7 +707,7 @@ The client-side code is deliberately kept small:
 
 \begin{figure}[h]
 	\centering
-	\resizebox{0.8\textwidth}{!}{%
+	\resizebox{0.9\textwidth}{!}{%
 		\begin{tikzpicture}[
 			node distance=1.0cm and 1.5cm,
 			every node/.style={font=\sffamily},
@@ -641,7 +743,7 @@ The client-side code is deliberately kept small:
 
 \begin{figure}[h]
 	\centering
-	\resizebox{0.75\textwidth}{!}{%
+	\resizebox{0.9\textwidth}{!}{%
 		\begin{tikzpicture}[
 			node distance=1.0cm and 2.2cm,
 			every node/.style={font=\sffamily},

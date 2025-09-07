@@ -1,6 +1,6 @@
-\chapter{Deployment and Validation in the VirtualOrfeo Environment}\label{chap:virtualorfeo-deployment}
+\chapter{Deployment and validation in the VirtualOrfeo environment}\label{chap:virtualorfeo-deployment}
 
-\section{VirtualOrfeo as a Digital Twin of the HPC Environment}
+\section{VirtualOrfeo as a digital twin of the HPC environment}
 
 To develop and test the data management platform in a realistic but safe setting, we use an internal system called \textbf{VirtualOrfeo}. VirtualOrfeo functions as a \emph{digital twin} of the ORFEO HPC cluster: a virtualized replica of its key infrastructure and services. This allows us to deploy and evaluate applications under conditions that closely mimic production, without the risk of disrupting the actual cluster. Digital twins are often used in High-Performance Computing (HPC) to experiment with configuration changes or new workflows before rolling them out in production \parencite{Ohmura2023TwdsDT}.
 
@@ -22,7 +22,7 @@ In practice, VirtualOrfeo provides a controlled environment to connect our Djang
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{K3s Cluster Topology in the Virtual Environment}
+\section{K3s cluster topology in the virtual environment}
 
 At the heart of VirtualOrfeo is a Kubernetes cluster deployed on one of the
 virtual machines (or across a couple of VMs) using \textbf{K3s}. K3s is a
@@ -124,7 +124,7 @@ transitioning to production.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Identity and Access Management in VirtualOrfeo} \label{sec:virtualorfeo-iam}
+\section{Identity and access management in VirtualOrfeo} \label{sec:virtualorfeo-iam}
 
 As outlined in Chapter~\ref{chap:infra}, ORFEO relies on a combination of 
 \textbf{FreeIPA} (as the authoritative directory for users and groups) and 
@@ -209,6 +209,34 @@ Once configured, the login flow works as follows:
 	user in.  
 \end{itemize}
 
+\begin{figure}[h]
+	\centering
+	\resizebox{0.9\textwidth}{!}{%
+		\begin{tikzpicture}[
+			node distance=2.2cm and 2.8cm,
+			every node/.style={font=\sffamily},
+			box/.style={draw, rounded corners, align=center, minimum width=3.4cm, minimum height=1.2cm}
+			]
+			
+			% Nodes
+			\node[box, fill=blue!15] (freeipa) {FreeIPA \\ \footnotesize Users, Groups, CA};
+			\node[box, fill=orange!20, right=of freeipa] (authentik) {Authentik \\ \footnotesize OIDC Provider};
+			\node[box, fill=green!15, right=of authentik] (django) {Django App \\ \footnotesize OIDC Client};
+			
+			% Arrows
+			\draw[->] (freeipa.east) -- (authentik.west) node[midway,above] {\footnotesize LDAP bind, sync};
+			\draw[->] (authentik.east) -- (django.west) node[midway,above] {\footnotesize OIDC tokens};
+			\draw[->, dashed] (freeipa.south east) .. controls +(0.8,-1.2) and +(-0.8,-1.2) .. (django.south west) node[midway,below] {\footnotesize TLS certs (CA)};
+			
+		\end{tikzpicture}%
+	}
+	\caption{Integration of FreeIPA and Authentik in VirtualOrfeo. 
+		FreeIPA is the authoritative directory and certificate authority. 
+		Authentik synchronizes users and groups via LDAP and provides OIDC tokens to clients. 
+		The Django application is registered as an OIDC client and authenticates via Authentik.}
+	\label{fig:freeipa-authentik}
+\end{figure}
+
 At no point does the Django app handle raw credentials; authentication is 
 delegated to Authentik and FreeIPA. This setup enables secure single sign-on 
 (SSO), ensures immediate revocation when a FreeIPA account is disabled, and 
@@ -232,7 +260,7 @@ storage to mirror the production environment.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Storage Integration in VirtualOrfeo} \label{sec:virtualorfeo-storage}
+\section{Storage integration in VirtualOrfeo} \label{sec:virtualorfeo-storage}
 
 Storage of experimental data is a major concern for our application, and 
 VirtualOrfeo replicates the production storage environment to a large extent. In 
@@ -380,7 +408,7 @@ is packaged and deployed on the VirtualOrfeo cluster.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Application Packaging and Deployment on K3s}
+\section{Application packaging and deployment on K3s}
 
 To demonstrate how a web application can be deployed in the VirtualOrfeo cluster, 
 we use a representative \textbf{Django} application packaged and deployed with 
@@ -456,7 +484,7 @@ and secrets, which is handled through Kubernetes-native mechanisms.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Secrets and Configuration Management}
+\section{Secrets and configuration management}
 
 Managing configuration and secrets is a critical part of deploying the application. In the VirtualOrfeo environment, the application requires a mix of configuration values: some are non-sensitive (e.g.\ URLs, feature flags), while others are highly sensitive (e.g.\ passwords, private keys, API secrets). Kubernetes provides native resources to handle both types: \textbf{ConfigMaps} for plain configuration and \textbf{Secrets} for sensitive values. Our deployment makes extensive use of both, ensuring that credentials remain secure and configuration stays flexible.
 

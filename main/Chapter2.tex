@@ -1,8 +1,13 @@
-\chapter{ORFEO Infrastructure: Distributed Storage and Identity Services}\label{chap:infra}
+\chapter{ORFEO infrastructure: distributed storage and identity services}\label{chap:infra}
 
-\section{ORFEO Data Center and Distributed Storage}
+\section{ORFEO datacenter and distributed storage}
 
-\subsection{ORFEO Datacenter: Infrastructure and Physical Data Storage}
+This section introduces ORFEO’s computing and storage infrastructure, which
+serves as the backbone for research workflows at Area Science Park. We begin
+with the datacenter itself and its physical storage, then describe the Ceph
+filesystem, and finally examine the RADOS Gateway interface.
+
+\subsection{ORFEO datacenter: infrastructure and physical data storage}
 
 ORFEO is a cutting-edge data center managed by the Laboratory of Data 
 Engineering (LADE) at Area Science Park. It is housed in a specialized container 
@@ -101,7 +106,7 @@ By moving LAME’s data into ORFEO, researchers will gain the advantages of
 scientific data.
 
 
-\subsection{Ceph Filesystem in ORFEO (\texttt{CephFS})}
+\subsection{Ceph filesystem in ORFEO (\texttt{CephFS})}
 
 \texttt{Ceph} is the primary storage technology underpinning ORFEO’s 
 filesystem \parencite{ORFEO_Docs_Storage}. \texttt{CephFS} (\texttt{Ceph} 
@@ -296,7 +301,7 @@ approach—file system access for HPC workloads and object storage for external
 and web-based workflows—broadens ORFEO’s utility as a central data platform.
 
 
-\section{Identity and Access Management (IAM): FreeIPA with Authentik}
+\section{Identity and access management (IAM): FreeIPA with Authentik}
 
 Modern computing infrastructures typically provide many different services 
 (web portals, storage systems, analysis tools), but users should not be forced 

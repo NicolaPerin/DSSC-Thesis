@@ -39,6 +39,12 @@ Electron microscopy data are most useful when the raw signals (e.g.\ \texttt{TIF
 	\end{itemize}
 \end{itemize}
 
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.7\textwidth]{img/chpt3/django_mvt_diagram.png}
+	\caption{Django Model–View–Template (MVT) architecture \parencite{freecodecamp_mvt}.}
+\end{figure}
+
 In the MVT workflow, an incoming request is routed by Django’s URL dispatcher (configured in \texttt{urls.py}) to the appropriate view. The \textbf{view} may interact with \textbf{models} to fetch or update data, and then passes that data to a \textbf{template} for rendering into an HTML page. The view finally returns the rendered HTML to the client as an HTTP response \parencite{DjangoRequestResponse,DjangoURLDispatcher}. 
 
 This separation of concerns makes the code more maintainable and reusable: the same model can support multiple views or templates. Django’s design emphasizes the \textbf{Don’t Repeat Yourself (DRY)} principle, keeping logic (views), data access (models), and presentation (templates) decoupled for clarity and reuse \parencite{DjangoPhilosophy}.
@@ -117,12 +123,12 @@ In our case, we use SQLite for quick local tests (because it’s simple and
 requires no setup), but for the deployed application we use a dedicated 
 relational database server.
 
-\subsection{Choosing PostgreSQL as the Database Backend} 
+\subsection{Choosing PostgreSQL as the database backend} 
 
 After evaluating the options, we decided to use \textbf{PostgreSQL} as the database backend for our application. PostgreSQL (often simply “Postgres”) is a powerful open-source relational database system known for its reliability and rich feature set \parencite{PostgresAbout}. Below are the key reasons for this choice: 
 
 \begin{itemize} 
-	\item \textbf{Reliability and Integrity:} 
+	\item \textbf{Reliability and integrity:} 
 	\begin{itemize}
 		\item Proven architecture with a long track record of stability \parencite{PostgresAbout}. 
 		\item Fully ACID-compliant for decades, ensuring safe concurrent transactions. 
@@ -130,7 +136,7 @@ After evaluating the options, we decided to use \textbf{PostgreSQL} as the datab
 		\item Can be trusted to faithfully record uploads and form submissions. 
 	\end{itemize}
 	
-	\item \textbf{Advanced Feature Set:} 
+	\item \textbf{Advanced feature set:} 
 	\begin{itemize}
 		\item Supports complex queries and a wide range of data types (including JSON for semi-structured data). 
 		\item Built-in full-text search capabilities \parencite{PostgresJSON,PostgresFTS}. 
@@ -138,7 +144,7 @@ After evaluating the options, we decided to use \textbf{PostgreSQL} as the datab
 		\item Strong adherence to SQL standards, making it a future-proof choice \parencite{PostgresAbout}. 
 	\end{itemize}
 	
-	\item \textbf{Scalability and Performance:} 
+	\item \textbf{Scalability and performance:} 
 	\begin{itemize}
 		\item Efficiently handles large datasets and many concurrent users \parencite{PostgresAbout}. 
 		\item Scales well as the number of experiments and users grows. 
@@ -146,7 +152,7 @@ After evaluating the options, we decided to use \textbf{PostgreSQL} as the datab
 		\item Solid performance for both read-heavy and write-heavy workloads, with tools for tuning and optimization. 
 	\end{itemize}
 	
-	\item \textbf{Community Support and Django Recommendation:} 
+	\item \textbf{Community support and Django recommendation:} 
 	\begin{itemize}
 		\item Free and open-source, with decades of active community development. 
 		\item Widely recommended within the Django ecosystem for production deployments. 

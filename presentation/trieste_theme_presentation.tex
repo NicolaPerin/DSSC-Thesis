@@ -1,0 +1,242 @@
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Adapted to English and filled with thesis content
+% for the University of Trieste theme by Isac Pasianotto.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass{beamer}
+
+% Load all required packages for the theme
+\usepackage{otherResources/presentazione_allPackages}
+
+% Document metadata
+\hypersetup{
+    pdfauthor={Nicola Perin},
+    pdftitle={Designing and deploying a FAIR-by-design data pipeline and platform for electron microscopy laboratories},
+    pdfsubject={Research thesis in: Data Management}
+}
+
+% Title block
+\title[FAIR-by-design EM pipeline]{Designing and deploying a FAIR-by-design data pipeline and platform for electron microscopy laboratories}
+\subtitle{Research thesis in: Data Management}
+\institute{University of Trieste}
+\author[Nicola Perin]{Nicola Perin}
+\year=2025
+\month=09
+\day=19
+
+% Advisors & labels (translated to English)
+\def\relatore{Dott. Federica Bazzocchi}
+\def\relatoreLabel{Supervisor}
+% \def\correlatore{<Co-supervisor name>}
+% \def\correlatoreLabel{Co-supervisor}
+\def\candidatoLabel{Candidate}
+
+% Logos (use your local paths if different)
+\def\LogoUniversita{otherResources/Units.Logo3Righe.png}
+\def\LogoDipartimento{otherResources/DSSC_logo.png}
+\def\LogoFiligrana{otherResources/background-blu.png}
+
+% Apply theme customizations
+\input{otherResources/presentazione_myThemeSetting.tex}
+
+% ---- Slides ----
+\begin{document}
+
+% Title frame (special dissertation style from the theme)
+\begin{frame}
+\setTitlestyleDissertation
+\maketitle
+\end{frame}
+
+% Table of contents
+\section*{Agenda}
+\begin{frame}
+    \frametitle{Agenda}
+    \tableofcontents
+\end{frame}
+
+% =====================
+% Context & Goals
+% =====================
+\section{Context \& Goals}
+
+\begin{frame}
+    \frametitle{Motivation \& Problem}
+    \begin{itemize}
+        \item Electron microscopy (EM) labs generate very large, heterogeneous datasets (images, diffraction, spectra).
+        \item Vendor-specific formats plus sparse metadata hinder interoperability \& reuse.
+        \item Informal practices (file names, local notes) do not scale across collaborations.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{FAIR Principles (Goal)}
+    \begin{itemize}
+        \item Make data \textbf{Findable, Accessible, Interoperable, Reusable}.
+        \item Emphasize rich metadata, standardized formats, and machine actionability.
+        \item Align with funder \& journal expectations; enable open science.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Standards \& Formats}
+    \begin{itemize}
+        \item \textbf{HDF5}: performant hierarchical container for large arrays and attributes.
+        \item \textbf{NeXus}: community conventions (e.g., \texttt{NXinstrument}, \texttt{NXsample}).
+        \item \textbf{NXem}: EM application definition (images, diffraction, EDS/EELS, 4D-STEM) + metadata.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Institutional Context}
+    \begin{itemize}
+        \item Area Science Park → RIT institute with labs: LADE (data engineering), LAGE (genomics), LAME (electron microscopy).
+        \item ORFEO data center provides HPC, Ceph storage, and identity services.
+        \item Project targets LAME workflows; scalable across NFFA–DI.
+    \end{itemize}
+\end{frame}
+
+% =====================
+% Infrastructure & Platform
+% =====================
+\section{Infrastructure \& Platform}
+
+\begin{frame}
+	\frametitle{Infrastructure: ORFEO}
+	\begin{itemize}
+		\item \textbf{Ceph} distributed storage with tiers for speed/capacity; replication and erasure coding.
+		\item \textbf{RADOS Gateway (RGW)}: S3-compatible interface for object storage.
+		\item \textbf{Identity and SSO}: FreeIPA (directory \& CA) + Authentik (OIDC provider).
+		\item Integrated into \textbf{ORFEO HPC cluster}: compute + storage + identity under one umbrella.
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Application Platform}
+	\begin{itemize}
+		\item Web app streamlines \textbf{upload + annotation} in one flow.
+		\item Built on \textbf{Django (MVT)} + PostgreSQL; REST API for scripted ingest.
+		\item Containerized services deployed with \textbf{Helm charts}.
+		\item Separation of interactive deposit (at the lab) from heavy processing (at data center).
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Deployment \& Validation}
+	\begin{itemize}
+		\item \textbf{VirtualOrfeo}: digital twin of ORFEO HPC, safe for experimentation.
+		\item Built from VMs (KVM/QEMU) managed via Vagrant + Ansible.
+		\item Replicates: directory services, Kubernetes, Ceph cluster.
+		\item Enables fast iteration without impacting production.
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{K3s Cluster Topology (VirtualOrfeo)}
+	\begin{itemize}
+		\item Lightweight \textbf{K3s} Kubernetes with one control-plane/worker VM.
+		\item Namespaces: \texttt{authentik}, \texttt{lame-fair}, monitoring.
+		\item Ingress via \textbf{NGINX} + load balancing with \textbf{MetalLB}.
+		\item Certificates issued by FreeIPA CA, automated by \textbf{cert-manager}.
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Identity \& Access Management}
+	\begin{itemize}
+		\item FreeIPA provides directory, groups, CA.
+		\item Authentik acts as OIDC provider integrated with FreeIPA.
+		\item Django app registered as OIDC client (\texttt{lame-fair}).
+		\item Secure login: Authentik manages tokens; app never handles raw passwords.
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Storage Integration in VirtualOrfeo}
+	\begin{itemize}
+		\item \textbf{Ceph RGW}: S3-compatible object store for raw + processed data.
+		\item Optional MinIO for lightweight tests.
+		\item Bucket layout mirrors Project $\rightarrow$ Proposal $\rightarrow$ Sample $\rightarrow$ Experiment.
+		\item NeXus files generated alongside raw TIFFs for FAIR compliance.
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Application Deployment on K3s}
+	\begin{itemize}
+		\item Packaged as a \textbf{Helm chart} (pods, services, secrets, ingress).
+		\item Gunicorn + NGINX sidecar for Django web service.
+		\item Background worker with Redis queue.
+		\item PostgreSQL database + migrations as Helm hooks.
+	\end{itemize}
+\end{frame}
+
+
+% =====================
+% Design & Implementation
+% =====================
+\section{Design \& Implementation}
+
+\begin{frame}
+    \frametitle{Domain Model \& Data Flow}
+    \begin{itemize}
+        \item Project → Proposal → Sample → Experiment → Measurement hierarchy.
+        \item Metadata captured early; mapped into NeXus/NXem.
+        \item Curated outputs stored in centralized data lake (S3/Ceph).
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Metadata \& NeXus Construction}
+    \begin{itemize}
+        \item Automated mapping of instrument settings (beam energy, detectors, stage coordinates).
+        \item Human-readable README + machine-readable NeXus containers.
+        \item Libraries (e.g., \texttt{pynxtools-em}) lower the adoption barrier.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Storage Gateway \& Background Tasks}
+    \begin{itemize}
+        \item Upload pipeline writes to object storage; lifecycle managed server-side.
+        \item Background workers handle conversion, validation, indexing.
+        \item Auditability \& provenance preserved end-to-end.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Security, Performance, Scalability}
+    \begin{itemize}
+        \item OIDC tokens with group claims → role-based access in-app.
+        \item Ceph scales horizontally; PostgreSQL tuned for concurrent users.
+        \item Asynchronous jobs decouple ingestion from heavy compute.
+    \end{itemize}
+\end{frame}
+
+% =====================
+% Results & Conclusions
+% =====================
+\section{Results \& Conclusions}
+
+\begin{frame}
+    \frametitle{Contributions}
+    \begin{itemize}
+        \item FAIR-by-design workflow from acquisition to curated NeXus/NXem.
+        \item Unified upload + annotation web app; API surface for automation.
+        \item Deployment blueprint validated in VirtualOrfeo; ready for ORFEO/NFFA–DI.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Conclusions \& Next Steps}
+    \begin{itemize}
+        \item Reproducible, interoperable EM data pipeline proved feasible.
+        \item Scale to additional instruments and labs; expand validators \& viewers.
+        \item Prepare for open access portals and cross-lab discovery.
+    \end{itemize}
+\end{frame}
+
+\end{document}

@@ -1,0 +1,129 @@
+\documentclass[aspectratio=169]{beamer}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{hyperref}
+\setbeamertemplate{navigation symbols}{}
+\title{Designing and deploying a FAIR-by-design data pipeline and platform for electron microscopy laboratories}
+\subtitle{Research thesis in: Data Management}
+\author{Nicola Perin \and Supervisor: Dott. Federica Bazzocchi}
+\institute{UNIVERSITY OF TRIESTE\\ Department of Mathematics, Informatics and Geosciences\\ Master’s Degree in Data Science and Scientific Computing\\ A.Y. 2024–2025}
+\date{2025-09-19}
+\begin{document}
+\begin{frame}
+\titlepage
+\end{frame}
+
+\begin{frame}{Agenda}
+\tableofcontents
+\end{frame}
+
+\section{Context \& Goals}
+\begin{frame}{Motivation \& Problem}
+\begin{itemize}
+\item EM labs generate very large, heterogeneous datasets (images, diffraction, spectra).
+\item Vendor-specific formats + sparse metadata hinder interoperability \& reuse.
+\item Informal practices (file names, local notes) don't scale across collaborations.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{FAIR Principles (Goal)}
+\begin{itemize}
+\item Make data Findable, Accessible, Interoperable, Reusable.
+\item Emphasize rich metadata, standardized formats, machine actionability.
+\item Align with funder \& journal expectations; enable open science.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Standards \& Formats}
+\begin{itemize}
+\item HDF5: performant hierarchical container for large arrays + attributes.
+\item NeXus: community conventions (NXinstrument, NXsample, etc.).
+\item NXem: EM application definition (images, diffraction, EDS/EELS, 4D-STEM + metadata).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Institutional Context}
+\begin{itemize}
+\item Area Science Park → RIT institute with labs: LADE (data engineering), LAGE (genomics), LAME (electron microscopy).
+\item ORFEO data center provides HPC, Ceph storage, and identity services.
+\item Project targets LAME workflows; scalable across NFFA‑DI.
+\end{itemize}
+\end{frame}
+
+\section{Infrastructure \& Platform}
+\begin{frame}{Infrastructure: ORFEO}
+\begin{itemize}
+\item Ceph-based distributed storage (tiers for speed/capacity; replication/erasure coding).
+\item RADOS Gateway exposes S3-compatible object storage.
+\item Identity \& SSO: FreeIPA directory + Authentik (OIDC).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Application Platform}
+\begin{itemize}
+\item Web app unifies upload + structured annotation in one flow.
+\item Django (MVT) + PostgreSQL; API for scripted ingest.
+\item Separation of interactive deposit (lab) from heavy processing (data center).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Deployment \& Validation}
+\begin{itemize}
+\item VirtualOrfeo digital twin: realistic, safe testbed.
+\item K3s Kubernetes, NGINX Ingress, MetalLB, cert-manager.
+\item Optional Ceph object storage integration; production‑like SSO.
+\end{itemize}
+\end{frame}
+
+\section{Design \& Implementation}
+\begin{frame}{Domain Model \& Data Flow}
+\begin{itemize}
+\item Project → Proposal → Sample → Experiment → Measurement hierarchy.
+\item Metadata captured early; mapped into NeXus/NXem.
+\item Curated outputs stored in centralized data lake (S3/Ceph).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Metadata \& NeXus Construction}
+\begin{itemize}
+\item Automated mapping of instrument settings (beam energy, detectors, stage coords).
+\item Human‑readable README + machine‑readable NeXus containers.
+\item Libraries (e.g., pynxtools-em) lower adoption barrier.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Storage Gateway \& Background Tasks}
+\begin{itemize}
+\item Upload pipeline writes to object storage; lifecycle managed server‑side.
+\item Background workers handle conversion, validation, indexing.
+\item Auditability \& provenance preserved end‑to‑end.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Security, Performance, Scalability}
+\begin{itemize}
+\item OIDC tokens with group claims → role-based access in-app.
+\item Ceph scales horizontally; PostgreSQL tuned for concurrent users.
+\item Asynchronous jobs decouple ingestion from heavy compute.
+\end{itemize}
+\end{frame}
+
+\section{Results \& Conclusions}
+\begin{frame}{Contributions}
+\begin{itemize}
+\item FAIR-by-design workflow from acquisition to curated NeXus/NXem.
+\item Unified upload + annotation web app; API surface for automation.
+\item Deployment blueprint validated in VirtualOrfeo; ready to port to ORFEO/NFFA‑DI.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Conclusions \& Next Steps}
+\begin{itemize}
+\item Reproducible, interoperable EM data pipeline proved feasible.
+\item Scale to additional instruments and labs; expand validators \& viewers.
+\item Prepare for open access portals and cross‑lab discovery.
+\end{itemize}
+\end{frame}
+
+\end{document}
