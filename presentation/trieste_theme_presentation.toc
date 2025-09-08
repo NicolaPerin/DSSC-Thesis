@@ -1,3 +1,2 @@
 \babel@toc {italian}{}\relax 
 \babel@toc {italian}{}\relax 
-\beamer@sectionintoc {2}{Context \& Goals}{3}{0}{1}
