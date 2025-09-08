@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2025.8.25)  6 SEP 2025 21:12
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2025.8.25)  8 SEP 2025 09:53
 entering extended mode
  \write18 enabled.
  %&-line parsing enabled.
@@ -1141,60 +1141,60 @@ Overfull \hbox (1.05634pt too wide) in paragraph at lines 46--46
  []
 
 
-Overfull \hbox (0.81528pt too wide) in paragraph at lines 52--52
+Overfull \hbox (0.81528pt too wide) in paragraph at lines 56--56
 [][]  
  []
 
 
-Overfull \hbox (3.63995pt too wide) in paragraph at lines 52--52
+Overfull \hbox (3.63995pt too wide) in paragraph at lines 56--56
 [][]  
  []
 
 
-Overfull \hbox (1.05634pt too wide) in paragraph at lines 52--52
+Overfull \hbox (1.05634pt too wide) in paragraph at lines 56--56
 [][][][]  
  []
 
-<otherResources/DSSC_logo.png, id=25, 622.325pt x 220.825pt>
+<otherResources/DSSC_logo.png, id=19, 622.325pt x 220.825pt>
 File: otherResources/DSSC_logo.png Graphic file (type png)
 <use otherResources/DSSC_logo.png>
-Package pdftex.def Info: otherResources/DSSC_logo.png  used on input line 52.
+Package pdftex.def Info: otherResources/DSSC_logo.png  used on input line 56.
 (pdftex.def)             Requested size: 138.2795pt x 49.06685pt.
-<otherResources/Units.Logo3Righe.png, id=27, 903.375pt x 304.13625pt>
+<otherResources/Units.Logo3Righe.png, id=21, 903.375pt x 304.13625pt>
 File: otherResources/Units.Logo3Righe.png Graphic file (type png)
 <use otherResources/Units.Logo3Righe.png>
 Package pdftex.def Info: otherResources/Units.Logo3Righe.png  used on input lin
-e 52.
+e 56.
 (pdftex.def)             Requested size: 138.2795pt x 46.55125pt.
-LaTeX Font Info:    Trying to load font information for U+msa on input line 52.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 56.
 
 (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 52.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 56.
 
 
 (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
-LaTeX Font Info:    Trying to load font information for U+rsfs on input line 52
+LaTeX Font Info:    Trying to load font information for U+rsfs on input line 56
 .
 
 (/usr/share/texlive/texmf-dist/tex/latex/jknapltx/ursfs.fd
 File: ursfs.fd 1998/03/24 rsfs font definition file (jk)
 )
 LaTeX Font Info:    Trying to load font information for OT1+mathkerncmss on inp
-ut line 52.
+ut line 56.
 
 (/usr/share/texlive/texmf-dist/tex/latex/sansmathaccent/ot1mathkerncmss.fd
 File: ot1mathkerncmss.fd 2020/01/31 Fontinst v1.933 font definitions for OT1/ma
 thkerncmss.
 )
-<otherResources/background-blu.png, id=28, 1927.2pt x 1204.5pt>
+<otherResources/background-blu.png, id=22, 1927.2pt x 1204.5pt>
 File: otherResources/background-blu.png Graphic file (type png)
 <use otherResources/background-blu.png>
 Package pdftex.def Info: otherResources/background-blu.png  used on input line 
-52.
+56.
 (pdftex.def)             Requested size: 394.99034pt x 246.86803pt.
 
 Overfull \hbox (3.63995pt too wide) has occurred while \output is active
@@ -1216,17 +1216,17 @@ c/dvips/cm-super/cm-super-t1.enc}
 
  <./otherResources/background-blu.png> <./otherResources/DSSC_logo.png> <./othe
 rResources/Units.Logo3Righe.png>]
-Overfull \hbox (0.81528pt too wide) in paragraph at lines 59--59
+Overfull \hbox (0.81528pt too wide) in paragraph at lines 63--63
 [][]  
  []
 
 
-Overfull \hbox (3.63995pt too wide) in paragraph at lines 59--59
+Overfull \hbox (3.63995pt too wide) in paragraph at lines 63--63
 [][]  
  []
 
 
-Overfull \hbox (1.05634pt too wide) in paragraph at lines 59--59
+Overfull \hbox (1.05634pt too wide) in paragraph at lines 63--63
 [][][][]  
  []
 
@@ -1234,7 +1234,7 @@ Overfull \hbox (1.05634pt too wide) in paragraph at lines 59--59
 File: otherResources/background-blu.png Graphic file (type png)
 <use otherResources/background-blu.png>
 Package pdftex.def Info: otherResources/background-blu.png  used on input line 
-59.
+63.
 (pdftex.def)             Requested size: 394.99034pt x 246.86803pt.
 
 Overfull \hbox (3.63995pt too wide) has occurred while \output is active
@@ -1254,24 +1254,24 @@ Overfull \hbox (0.81528pt too wide) has occurred while \output is active
 [2
 
 ]
-Overfull \hbox (0.81528pt too wide) in paragraph at lines 73--73
+Overfull \hbox (0.81528pt too wide) in paragraph at lines 79--79
 [][]  
  []
 
 
-Overfull \hbox (3.63995pt too wide) in paragraph at lines 73--73
+Overfull \hbox (3.63995pt too wide) in paragraph at lines 79--79
 [][]  
  []
 
 
-Overfull \hbox (1.05634pt too wide) in paragraph at lines 73--73
+Overfull \hbox (1.05634pt too wide) in paragraph at lines 79--79
 [][][][]  
  []
 
 File: otherResources/background-blu.png Graphic file (type png)
 <use otherResources/background-blu.png>
 Package pdftex.def Info: otherResources/background-blu.png  used on input line 
-73.
+79.
 (pdftex.def)             Requested size: 394.99034pt x 246.86803pt.
 
 Overfull \hbox (3.63995pt too wide) has occurred while \output is active
@@ -1291,43 +1291,6 @@ Overfull \hbox (0.81528pt too wide) has occurred while \output is active
 [3
 
 ]
-Overfull \hbox (0.81528pt too wide) in paragraph at lines 82--82
-[][]  
- []
-
-
-Overfull \hbox (3.63995pt too wide) in paragraph at lines 82--82
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) in paragraph at lines 82--82
-[][][][]  
- []
-
-File: otherResources/background-blu.png Graphic file (type png)
-<use otherResources/background-blu.png>
-Package pdftex.def Info: otherResources/background-blu.png  used on input line 
-82.
-(pdftex.def)             Requested size: 394.99034pt x 246.86803pt.
-
-Overfull \hbox (3.63995pt too wide) has occurred while \output is active
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) has occurred while \output is active
-[][][][] 
- []
-
-
-Overfull \hbox (0.81528pt too wide) has occurred while \output is active
-[][] 
- []
-
-[4
-
-]
 Overfull \hbox (0.81528pt too wide) in paragraph at lines 91--91
 [][]  
  []
@@ -1342,11 +1305,12 @@ Overfull \hbox (1.05634pt too wide) in paragraph at lines 91--91
 [][][][]  
  []
 
-LaTeX Font Info:    Trying to load font information for T1+cmtt on input line 9
-1.
-(/usr/share/texlive/texmf-dist/tex/latex/base/t1cmtt.fd
-File: t1cmtt.fd 2023/04/13 v2.5m Standard LaTeX font definitions
-)
+<otherResources/FAIR_data_principles.png, id=130, 963.6pt x 327.2225pt>
+File: otherResources/FAIR_data_principles.png Graphic file (type png)
+<use otherResources/FAIR_data_principles.png>
+Package pdftex.def Info: otherResources/FAIR_data_principles.png  used on input
+ line 91.
+(pdftex.def)             Requested size: 215.10196pt x 73.0427pt.
 File: otherResources/background-blu.png Graphic file (type png)
 <use otherResources/background-blu.png>
 Package pdftex.def Info: otherResources/background-blu.png  used on input line 
@@ -1367,32 +1331,107 @@ Overfull \hbox (0.81528pt too wide) has occurred while \output is active
 [][] 
  []
 
-[5
+[4
 
-]
-Overfull \hbox (0.81528pt too wide) in paragraph at lines 100--100
+ <./otherResources/FAIR_data_principles.png>]
+Overfull \hbox (0.81528pt too wide) in paragraph at lines 105--105
 [][]  
  []
 
 
-Overfull \hbox (3.63995pt too wide) in paragraph at lines 100--100
+Overfull \hbox (3.63995pt too wide) in paragraph at lines 105--105
 [][]  
  []
 
 
-Overfull \hbox (1.05634pt too wide) in paragraph at lines 100--100
+Overfull \hbox (1.05634pt too wide) in paragraph at lines 105--105
 [][][][]  
  []
 
+
+LaTeX Warning: File `img/diagrams/nexus_nxem.png' not found on input line 105.
+
+
+! Package pdftex.def Error: File `img/diagrams/nexus_nxem.png' not found: using
+ draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.105 	\end{frame}
+                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+LaTeX Font Info:    Trying to load font information for T1+cmtt on input line 1
+05.
+(/usr/share/texlive/texmf-dist/tex/latex/base/t1cmtt.fd
+File: t1cmtt.fd 2023/04/13 v2.5m Standard LaTeX font definitions
+)
+File: otherResources/background-blu.png Graphic file (type png)
+<use otherResources/background-blu.png>
+Package pdftex.def Info: otherResources/background-blu.png  used on input line 
+105.
+(pdftex.def)             Requested size: 394.99034pt x 246.86803pt.
+
+Overfull \hbox (3.63995pt too wide) has occurred while \output is active
+[][]  
+ []
+
+
+Overfull \hbox (1.05634pt too wide) has occurred while \output is active
+[][][][] 
+ []
+
+
+Overfull \hbox (0.81528pt too wide) has occurred while \output is active
+[][] 
+ []
+
+[5
+
+]
+Overfull \hbox (0.81528pt too wide) in paragraph at lines 124--124
+[][]  
+ []
+
+
+Overfull \hbox (3.63995pt too wide) in paragraph at lines 124--124
+[][]  
+ []
+
+
+Overfull \hbox (1.05634pt too wide) in paragraph at lines 124--124
+[][][][]  
+ []
+
+
+LaTeX Warning: File `img/diagrams/area_science_park.png' not found on input lin
+e 124.
+
+
+! Package pdftex.def Error: File `img/diagrams/area_science_park.png' not found
+: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.124 	\end{frame}
+                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
 LaTeX Font Info:    Trying to load font information for TS1+cmss on input line 
-100.
+124.
 (/usr/share/texlive/texmf-dist/tex/latex/base/ts1cmss.fd
 File: ts1cmss.fd 2023/04/13 v2.5m Standard LaTeX font definitions
 )
 File: otherResources/background-blu.png Graphic file (type png)
 <use otherResources/background-blu.png>
 Package pdftex.def Info: otherResources/background-blu.png  used on input line 
-100.
+124.
 (pdftex.def)             Requested size: 394.99034pt x 246.86803pt.
 
 Overfull \hbox (3.63995pt too wide) has occurred while \output is active
@@ -1412,487 +1451,6 @@ Overfull \hbox (0.81528pt too wide) has occurred while \output is active
 [6
 
 {/usr/share/texmf/fonts/enc/dvips/cm-super/cm-super-ts1.enc}]
-Overfull \hbox (0.81528pt too wide) in paragraph at lines 115--115
-[][]  
- []
-
-
-Overfull \hbox (3.63995pt too wide) in paragraph at lines 115--115
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) in paragraph at lines 115--115
-[][][][]  
- []
-
-File: otherResources/background-blu.png Graphic file (type png)
-<use otherResources/background-blu.png>
-Package pdftex.def Info: otherResources/background-blu.png  used on input line 
-115.
-(pdftex.def)             Requested size: 394.99034pt x 246.86803pt.
-
-Overfull \hbox (3.63995pt too wide) has occurred while \output is active
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) has occurred while \output is active
-[][][][] 
- []
-
-
-Overfull \hbox (0.81528pt too wide) has occurred while \output is active
-[][] 
- []
-
-[7
-
-]
-Overfull \hbox (0.81528pt too wide) in paragraph at lines 125--125
-[][]  
- []
-
-
-Overfull \hbox (3.63995pt too wide) in paragraph at lines 125--125
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) in paragraph at lines 125--125
-[][][][]  
- []
-
-File: otherResources/background-blu.png Graphic file (type png)
-<use otherResources/background-blu.png>
-Package pdftex.def Info: otherResources/background-blu.png  used on input line 
-125.
-(pdftex.def)             Requested size: 394.99034pt x 246.86803pt.
-
-Overfull \hbox (3.63995pt too wide) has occurred while \output is active
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) has occurred while \output is active
-[][][][] 
- []
-
-
-Overfull \hbox (0.81528pt too wide) has occurred while \output is active
-[][] 
- []
-
-[8
-
-]
-Overfull \hbox (0.81528pt too wide) in paragraph at lines 135--135
-[][]  
- []
-
-
-Overfull \hbox (3.63995pt too wide) in paragraph at lines 135--135
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) in paragraph at lines 135--135
-[][][][]  
- []
-
-File: otherResources/background-blu.png Graphic file (type png)
-<use otherResources/background-blu.png>
-Package pdftex.def Info: otherResources/background-blu.png  used on input line 
-135.
-(pdftex.def)             Requested size: 394.99034pt x 246.86803pt.
-
-Overfull \hbox (3.63995pt too wide) has occurred while \output is active
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) has occurred while \output is active
-[][][][] 
- []
-
-
-Overfull \hbox (0.81528pt too wide) has occurred while \output is active
-[][] 
- []
-
-[9
-
-]
-Overfull \hbox (0.81528pt too wide) in paragraph at lines 145--145
-[][]  
- []
-
-
-Overfull \hbox (3.63995pt too wide) in paragraph at lines 145--145
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) in paragraph at lines 145--145
-[][][][]  
- []
-
-File: otherResources/background-blu.png Graphic file (type png)
-<use otherResources/background-blu.png>
-Package pdftex.def Info: otherResources/background-blu.png  used on input line 
-145.
-(pdftex.def)             Requested size: 394.99034pt x 246.86803pt.
-
-Overfull \hbox (3.63995pt too wide) has occurred while \output is active
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) has occurred while \output is active
-[][][][] 
- []
-
-
-Overfull \hbox (0.81528pt too wide) has occurred while \output is active
-[][] 
- []
-
-[10
-
-]
-Overfull \hbox (0.81528pt too wide) in paragraph at lines 155--155
-[][]  
- []
-
-
-Overfull \hbox (3.63995pt too wide) in paragraph at lines 155--155
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) in paragraph at lines 155--155
-[][][][]  
- []
-
-File: otherResources/background-blu.png Graphic file (type png)
-<use otherResources/background-blu.png>
-Package pdftex.def Info: otherResources/background-blu.png  used on input line 
-155.
-(pdftex.def)             Requested size: 394.99034pt x 246.86803pt.
-
-Overfull \hbox (3.63995pt too wide) has occurred while \output is active
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) has occurred while \output is active
-[][][][] 
- []
-
-
-Overfull \hbox (0.81528pt too wide) has occurred while \output is active
-[][] 
- []
-
-[11
-
-]
-Overfull \hbox (0.81528pt too wide) in paragraph at lines 165--165
-[][]  
- []
-
-
-Overfull \hbox (3.63995pt too wide) in paragraph at lines 165--165
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) in paragraph at lines 165--165
-[][][][]  
- []
-
-File: otherResources/background-blu.png Graphic file (type png)
-<use otherResources/background-blu.png>
-Package pdftex.def Info: otherResources/background-blu.png  used on input line 
-165.
-(pdftex.def)             Requested size: 394.99034pt x 246.86803pt.
-
-Overfull \hbox (3.63995pt too wide) has occurred while \output is active
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) has occurred while \output is active
-[][][][] 
- []
-
-
-Overfull \hbox (0.81528pt too wide) has occurred while \output is active
-[][] 
- []
-
-[12
-
-]
-Overfull \hbox (0.81528pt too wide) in paragraph at lines 175--175
-[][]  
- []
-
-
-Overfull \hbox (3.63995pt too wide) in paragraph at lines 175--175
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) in paragraph at lines 175--175
-[][][][]  
- []
-
-File: otherResources/background-blu.png Graphic file (type png)
-<use otherResources/background-blu.png>
-Package pdftex.def Info: otherResources/background-blu.png  used on input line 
-175.
-(pdftex.def)             Requested size: 394.99034pt x 246.86803pt.
-
-Overfull \hbox (3.63995pt too wide) has occurred while \output is active
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) has occurred while \output is active
-[][][][] 
- []
-
-
-Overfull \hbox (0.81528pt too wide) has occurred while \output is active
-[][] 
- []
-
-[13
-
-]
-Overfull \hbox (0.81528pt too wide) in paragraph at lines 190--190
-[][]  
- []
-
-
-Overfull \hbox (3.63995pt too wide) in paragraph at lines 190--190
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) in paragraph at lines 190--190
-[][][][]  
- []
-
-File: otherResources/background-blu.png Graphic file (type png)
-<use otherResources/background-blu.png>
-Package pdftex.def Info: otherResources/background-blu.png  used on input line 
-190.
-(pdftex.def)             Requested size: 394.99034pt x 246.86803pt.
-
-Overfull \hbox (3.63995pt too wide) has occurred while \output is active
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) has occurred while \output is active
-[][][][] 
- []
-
-
-Overfull \hbox (0.81528pt too wide) has occurred while \output is active
-[][] 
- []
-
-[14
-
-]
-Overfull \hbox (0.81528pt too wide) in paragraph at lines 199--199
-[][]  
- []
-
-
-Overfull \hbox (3.63995pt too wide) in paragraph at lines 199--199
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) in paragraph at lines 199--199
-[][][][]  
- []
-
-File: otherResources/background-blu.png Graphic file (type png)
-<use otherResources/background-blu.png>
-Package pdftex.def Info: otherResources/background-blu.png  used on input line 
-199.
-(pdftex.def)             Requested size: 394.99034pt x 246.86803pt.
-
-Overfull \hbox (3.63995pt too wide) has occurred while \output is active
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) has occurred while \output is active
-[][][][] 
- []
-
-
-Overfull \hbox (0.81528pt too wide) has occurred while \output is active
-[][] 
- []
-
-[15
-
-]
-Overfull \hbox (0.81528pt too wide) in paragraph at lines 208--208
-[][]  
- []
-
-
-Overfull \hbox (3.63995pt too wide) in paragraph at lines 208--208
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) in paragraph at lines 208--208
-[][][][]  
- []
-
-File: otherResources/background-blu.png Graphic file (type png)
-<use otherResources/background-blu.png>
-Package pdftex.def Info: otherResources/background-blu.png  used on input line 
-208.
-(pdftex.def)             Requested size: 394.99034pt x 246.86803pt.
-
-Overfull \hbox (3.63995pt too wide) has occurred while \output is active
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) has occurred while \output is active
-[][][][] 
- []
-
-
-Overfull \hbox (0.81528pt too wide) has occurred while \output is active
-[][] 
- []
-
-[16
-
-]
-Overfull \hbox (0.81528pt too wide) in paragraph at lines 217--217
-[][]  
- []
-
-
-Overfull \hbox (3.63995pt too wide) in paragraph at lines 217--217
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) in paragraph at lines 217--217
-[][][][]  
- []
-
-File: otherResources/background-blu.png Graphic file (type png)
-<use otherResources/background-blu.png>
-Package pdftex.def Info: otherResources/background-blu.png  used on input line 
-217.
-(pdftex.def)             Requested size: 394.99034pt x 246.86803pt.
-
-Overfull \hbox (3.63995pt too wide) has occurred while \output is active
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) has occurred while \output is active
-[][][][] 
- []
-
-
-Overfull \hbox (0.81528pt too wide) has occurred while \output is active
-[][] 
- []
-
-[17
-
-]
-Overfull \hbox (0.81528pt too wide) in paragraph at lines 231--231
-[][]  
- []
-
-
-Overfull \hbox (3.63995pt too wide) in paragraph at lines 231--231
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) in paragraph at lines 231--231
-[][][][]  
- []
-
-File: otherResources/background-blu.png Graphic file (type png)
-<use otherResources/background-blu.png>
-Package pdftex.def Info: otherResources/background-blu.png  used on input line 
-231.
-(pdftex.def)             Requested size: 394.99034pt x 246.86803pt.
-
-Overfull \hbox (3.63995pt too wide) has occurred while \output is active
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) has occurred while \output is active
-[][][][] 
- []
-
-
-Overfull \hbox (0.81528pt too wide) has occurred while \output is active
-[][] 
- []
-
-[18
-
-]
-Overfull \hbox (0.81528pt too wide) in paragraph at lines 240--240
-[][]  
- []
-
-
-Overfull \hbox (3.63995pt too wide) in paragraph at lines 240--240
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) in paragraph at lines 240--240
-[][][][]  
- []
-
-File: otherResources/background-blu.png Graphic file (type png)
-<use otherResources/background-blu.png>
-Package pdftex.def Info: otherResources/background-blu.png  used on input line 
-240.
-(pdftex.def)             Requested size: 394.99034pt x 246.86803pt.
-
-Overfull \hbox (3.63995pt too wide) has occurred while \output is active
-[][]  
- []
-
-
-Overfull \hbox (1.05634pt too wide) has occurred while \output is active
-[][][][] 
- []
-
-
-Overfull \hbox (0.81528pt too wide) has occurred while \output is active
-[][] 
- []
-
-[19
-
-]
 \tf@nav=\write5
 \openout5 = `trieste_theme_presentation.nav'.
 
@@ -1902,30 +1460,32 @@ Overfull \hbox (0.81528pt too wide) has occurred while \output is active
 \tf@snm=\write7
 \openout7 = `trieste_theme_presentation.snm'.
 
- (./trieste_theme_presentation.aux)
+
+(./trieste_theme_presentation.aux)
  ***********
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-01-22>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 27965 strings out of 474222
- 542000 string characters out of 5748733
- 1940975 words of memory out of 5000000
- 49602 multiletter control sequences out of 15000+600000
- 570760 words of font info for 70 fonts, out of 8000000 for 9000
+ 27970 strings out of 474222
+ 544298 string characters out of 5748733
+ 1939975 words of memory out of 5000000
+ 49634 multiletter control sequences out of 15000+600000
+ 572280 words of font info for 72 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 128i,17n,123p,420b,790s stack positions out of 10000i,1000n,20000p,200000b,200000s
-</usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></us
-r/share/texlive/texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.pfb></usr
-/share/texmf/fonts/type1/public/cm-super/sfss0600.pfb></usr/share/texmf/fonts/t
-ype1/public/cm-super/sfss1095.pfb></usr/share/texmf/fonts/type1/public/cm-super
-/sfsx1095.pfb></usr/share/texmf/fonts/type1/public/cm-super/sfsx1440.pfb></usr/
-share/texmf/fonts/type1/public/cm-super/sftt1095.pfb>
-Output written on trieste_theme_presentation.pdf (19 pages, 399540 bytes).
+ 128i,17n,123p,401b,790s stack positions out of 10000i,1000n,20000p,200000b,200000s
+</usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.pfb
+></usr/share/texmf/fonts/type1/public/cm-super/sfss0600.pfb></usr/share/texmf/f
+onts/type1/public/cm-super/sfss1000.pfb></usr/share/texmf/fonts/type1/public/cm
+-super/sfss1095.pfb></usr/share/texmf/fonts/type1/public/cm-super/sfsx1000.pfb>
+</usr/share/texmf/fonts/type1/public/cm-super/sfsx1095.pfb></usr/share/texmf/fo
+nts/type1/public/cm-super/sfsx1440.pfb></usr/share/texmf/fonts/type1/public/cm-
+super/sftt1095.pfb>
+Output written on trieste_theme_presentation.pdf (6 pages, 412232 bytes).
 PDF statistics:
- 819 PDF objects out of 1000 (max. 8388607)
- 644 compressed objects within 7 object streams
- 44 named destinations out of 1000 (max. 500000)
- 98 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 275 PDF objects out of 1000 (max. 8388607)
+ 213 compressed objects within 3 object streams
+ 15 named destinations out of 1000 (max. 500000)
+ 79 words of extra memory for PDF output out of 10000 (max. 10000000)
 

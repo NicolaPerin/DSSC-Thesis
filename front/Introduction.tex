@@ -3,23 +3,28 @@
 Modern scientific laboratories are generating unprecedented volumes of complex data. 
 In electron microscopy (EM), a single transmission electron microscopy (TEM) session can produce gigabytes of images, spectra, and multidimensional datasets \parencite{Poger2023BigDataEM}. 
 Managing and making sense of this data deluge has become a central challenge for both scientists and facility managers. 
-EM data are typically recorded in vendor-specific formats and analyzed with proprietary software, which complicates long-term access, interoperability, and reuse \parencite{Moore2021OMENGFF}. 
-Without systematic data management, researchers often fall back on informal practices—renaming files, maintaining local notes—that do not scale, especially across collaborations \parencite{Korir2024TenRecs}. 
+EM data are typically recorded in vendor-specific formats and analyzed with proprietary software, which complicates long-term access, interoperability, and reusability \parencite{Moore2021OMENGFF}. 
+Without planned and systematic data management, researchers often fall back on informal practices—renaming files, maintaining local notes—that do not scale, especially across collaborations \parencite{Korir2024TenRecs}. 
 As a result, valuable datasets are frequently siloed, forgotten, or irretrievable, undermining reproducibility and slowing scientific progress.
 
 The scientific community increasingly addresses these issues through the FAIR data principles: research outputs should be \textbf{F}indable, \textbf{A}ccessible, \textbf{I}nteroperable, and \textbf{R}eusable by both humans and machines \parencite{Wilkinson2016FAIR,GOFAIRPrinciples}. 
-FAIR practices emphasize rich metadata, standardized formats, and infrastructures that allow data discovery and reuse with minimal friction. 
+FAIR practices emphasize rich metadata\footnote{Metadata are “data about data”: descriptive information such as authorship, date, experimental settings, or file format, which help interpret and reuse the primary data.}, standardized formats, and infrastructures that allow data discovery and reuse with minimal friction. 
 They also stress machine-actionability, since data volumes are now too large to be curated manually \parencite{Wilkinson2016FAIR}. 
 Funding agencies and journals increasingly expect adherence to FAIR workflows \parencite{EC2018TurningFAIR,EC2021HEGuide}, making these practices not only desirable but necessary.
 
 This thesis investigates how FAIR principles can be applied to the daily operations of a state-of-the-art electron microscopy laboratory. 
 We focus on the \textit{Laboratorio di Microscopia Elettronica} (LAME) at Area Science Park in Trieste, Italy \parencite{AreaLAME}. 
-Equipped with cutting-edge TEM/STEM and FIB-SEM instruments, LAME produces large and heterogeneous datasets—high-resolution images, diffraction patterns, elemental maps, EELS spectra, tomography reconstructions—that require careful management to ensure future usability. 
+Equipped with cutting-edge TEM\footnote{Transmission Electron Microscopy}, STEM\footnote{Scanning Transmission Electron Microscopy}, 
+FIB-SEM\footnote{Focused Ion Beam – Scanning Electron Microscopy}, and EELS\footnote{Electron Energy Loss Spectroscopy} instruments, 
+LAME produces large and heterogeneous datasets—high-resolution images, diffraction patterns, elemental maps, EELS spectra, tomography reconstructions—that require careful management to ensure future usability. 
+While FAIR data practices are increasingly adopted in other fields, few complete pipelines exist today for electron microscopy, making this work a step toward filling that gap.
 
 Our project develops and validates a FAIR-by-design data infrastructure for LAME. 
 The core strategy is to capture data at the moment of acquisition, enrich it with standardized metadata, and package it into the \textit{NeXus} format—an HDF5-based community standard for scientific data \parencite{Konnecke2015NeXus}. 
-In particular, we adopt the \texttt{NXem} extension for electron microscopy, which specifies schemas for instrument settings, detector parameters, and sample context \parencite{NXemManual,NXemFAIRmat}. 
-By leveraging NeXus/NXem, we ensure that microscopy datasets are self-describing, interoperable, and future-proof. 
+In particular, we adopt the \texttt{NXem} application definition\footnote{%
+	In the NeXus standard, an \emph{application definition} specifies a fixed schema for a given experimental technique, defining which groups and fields must be present and how metadata should be organized. This ensures that data from different instruments can be interpreted in a consistent way.} 
+for electron microscopy, which specifies schemas for instrument settings, detector parameters, and sample context \parencite{NXemManual,NXemFAIRmat}. 
+By leveraging NeXus/NXem, we ensure that microscopy datasets are self-describing, interoperable, and future-proof.
 
 The pipeline developed at LAME automatically ingests raw microscope outputs, maps metadata into the NeXus schema, and deposits curated files in a centralized data lake. 
 A lab-facing web application couples user uploads with structured annotation, while the heavy data processing occurs server-side at the institute’s \textit{ORFEO} data center. 
@@ -31,7 +36,8 @@ The result is a reproducible and scalable workflow that preserves experimental d
 	\item A FAIR-by-design workflow for electron microscopy at LAME, from raw TIFF acquisition to standardized \textit{NeXus}/\textit{NXem} packaging and curated storage.
 	\item A web application that unifies data upload and structured annotation, producing both human-readable README artefacts and machine-readable NeXus files.
 	\item A deployment pattern that separates laboratory acquisition systems from heavy processing, by centralizing conversion and storage in a robust data center.
-	\item A blueprint for reproducible FAIR data workflows, intended for extension across the NFFA-DI program and aligned with European open science policies.
+	\item A blueprint for reproducible FAIR data workflows, intended for extension across the NFFA-DI program (see Section~\ref{sec:nffa-di}) and aligned with European open science policies.
+
 \end{itemize}
 
 \medskip
@@ -40,7 +46,7 @@ The result is a reproducible and scalable workflow that preserves experimental d
 	\item Chapter~\ref{chap:foundations} introduces the broader context: challenges in EM data management, FAIR principles, related initiatives, and the institutional setting at Area Science Park. 
 	\item Chapter~\ref{chap:infra} describes the existing infrastructure, including storage (\texttt{Ceph}/\texttt{RGW}/\texttt{S3}) and identity (\textit{FreeIPA}/\textit{Authentik}). 
 	\item Chapter~\ref{chap:django} motivates the use of the Django framework and PostgreSQL. 
-	\item Chapter~\ref{chap:virtualorfeo-deployment} presents the \textit{virtualorfeo} environment and the application deployment. 
+	\item Chapter~\ref{chap:virtualorfeo-deployment} presents the \textit{virtualorfeo} test environment and the application deployment. 
 	\item Chapter~\ref{chap:deep-dive-app} provides a deep dive into the application’s inner workings (metadata extraction, NXem construction, storage flows). 
 	\item In the \nameref{chap:conclusions}, we summarize the lessons learned and outline directions for adoption across NFFA-DI.
 \end{enumerate}

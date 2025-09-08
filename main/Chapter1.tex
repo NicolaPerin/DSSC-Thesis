@@ -25,30 +25,36 @@ Within LAME at Area Science Park, the concrete needs that emerge from day-to-day
 	\item a community format that couples data and metadata in a self-describing structure; and
 	\item low-friction deposit and retrieval that does not disrupt microscope workflows.
 \end{enumerate}
-Meeting these needs requires standardized file formats and workflows that begin at the point of data creation, not at publication.
+Meeting these needs requires standardized file formats and workflows that are \emph{FAIR-by-design}, beginning at the point of data creation rather than at publication.
 
 %--------------------------------------------------
-\section{FAIR data and national initiatives}
+\section{FAIR data and national initiatives}\label{sec:nffa-di}
 
 The FAIR principles (data should be \textbf{F}indable, \textbf{A}ccessible, \textbf{I}nteroperable, and \textbf{R}eusable) provide a framework for addressing these challenges \parencite{Wilkinson2016FAIR,GOFAIRPrinciples}. 
-In practice, FAIR means using persistent identifiers, standardized metadata, and open or well-documented formats, and depositing data in searchable repositories \parencite{EC2018TurningFAIR,EC2021HEGuide}. 
+In practice, FAIR means using persistent identifiers, standardized metadata, and open or well-documented formats, and depositing data in searchable repositories with clear access policies and explicit usage licenses \parencite{EC2018TurningFAIR,EC2021HEGuide}. 
 
 In Italy, these principles are being operationalized through national initiatives such as NFFA-DI (Nanoscience Foundries \& Fine Analysis – Digital Infrastructure). 
-NFFA-DI, funded by the PNRR program, coordinates FAIR-by-design data management across eleven nanoscience laboratories \parencite{nffamaster2024}. 
-Its Overarching FAIR Ecosystem for Data (OFED) provides S3-compatible object storage for NeXus files, metadata indexing, and visualization endpoints, containerized on the Orfeo HPC cluster \parencite{ofedslides}. 
+NFFA-DI, funded by the PNRR program, coordinates FAIR-by-design data management across eleven research institutions and a total of 119 scientific instruments \parencite{nffamaster2024}. 
+Its Overarching FAIR Ecosystem for Data (OFED) provides S3-compatible object storage for NeXus files, metadata indexing, and visualization endpoints, containerized on the ORFEO HPC cluster \parencite{ofedslides}. 
 Lab-embedded data stewards ensure quality and metadata completeness before archival. 
 LAME contributes TEM and STEM workflows to NFFA-DI.
 
 Internationally, FAIRmat within Germany’s NFDI program extends the NOMAD repository to experimental data, including EM outputs \parencite{fairmatPortal}. 
 Its contributions to the \texttt{NXem} definition give laboratories concrete templates for storing images, diffraction patterns, and spectra with metadata \parencite{fairmathdf5}. 
 
-Aligning local workflows with these initiatives increases interoperability and prepares laboratories for transparent data exchange across national and European portals.
+Aligning local workflows with these initiatives increases interoperability and prepares laboratories for transparent data exchange across national and European portals, particularly through the European Open Science Cloud (EOSC). 
+
 
 %--------------------------------------------------
 \section{Electron microscopy instrumentation}
 
+Electron microscopy (EM) is a family of techniques that use beams of electrons, rather than visible light, to form images of materials. 
+Because electrons have much shorter wavelengths than photons, EM can resolve structures down to the atomic scale. 
+Different instrument configurations extend this capability with analytical techniques such as diffraction and spectroscopy, providing not only images but also information about composition and electronic structure.  
+
 Electron microscopy supports nanoscience with imaging and spectroscopy at the atomic scale. 
 A brief overview of the modalities available at LAME clarifies the sources and structure of the data to be managed.
+
 
 \subsection{Transmission electron microscopy (TEM)}
 
@@ -65,7 +71,7 @@ Hybrid-pixel direct detectors further support 4D-STEM, where full diffraction pa
 These volumes demand disciplined metadata tracking and standardized storage.
 
 %--------------------------------------------------
-\section{Data standards: HDF5, NeXus, and NXem}
+\section{Data standards: HDF5, NeXus, and NXem}\label{sec:nexus-format}
 
 Large-scale electron microscopy experiments produce not only very large files, but also complex combinations of raw signals and contextual information. 
 To make such datasets usable over the long term, they need to be stored in formats that can handle both high-volume numerical arrays (such as images or spectra) and descriptive metadata (such as microscope settings or sample details). 
@@ -89,10 +95,12 @@ This lack of shared semantics motivates higher-level conventions such as NeXus.
 
 \subsection{NeXus: community conventions on top of HDF5}
 
-\textit{NeXus} is an international standard that builds on HDF5 by introducing shared conventions for scientific experiments \parencite{nxcanSASguide,nxvalidate}. 
-It defines a set of base classes (such as \texttt{NXinstrument}, \texttt{NXsample}, \texttt{NXdetector}) that describe common experimental entities. 
+\textit{NeXus} is an international standard that was originally introduced in the neutron scattering community and later adopted by other experimental fields, including X-ray and electron microscopy \parencite{nxcanSASguide,nxvalidate}. 
+It builds on HDF5 by introducing shared conventions for scientific experiments. 
+NeXus defines a set of base classes (such as \texttt{NXinstrument}, \texttt{NXsample}, \texttt{NXdetector}) that describe common experimental entities. 
 On top of these, it provides \textit{application definitions}: community-agreed templates that specify which data and metadata fields are required, optional, or recommended for a given experimental technique. 
 For example, an application definition for X-ray diffraction will specify how to record beam energy, detector geometry, and intensity maps, so that any compliant dataset has the same structure. 
+
 
 This approach makes NeXus files self-describing not only in a technical sense (as in HDF5), but also at the scientific level. 
 A NeXus file tells both humans and machines what kind of experiment was performed, which instrument and sample parameters are relevant, and where the actual measurement data can be found in the hierarchy. 
@@ -111,16 +119,16 @@ This lowers the barrier for laboratories to transition from raw vendor files to 
 %--------------------------------------------------
 \section{Institutional context: Area Science Park and RIT}
 
-The implementation of a FAIR data workflow at LAME is supported by the organizational context within Area Science Park. Specifically, the project is carried out under AREA’s Institute for Research and Technological Innovation (RIT – Istituto per la Ricerca e l’Innovazione Tecnologica). RIT is a multi-disciplinary research institute within Area Science Park that focuses on cutting-edge R\&D and provides advanced services to external partners. It is structured into several laboratories equipped with state-of-the-art technologies. The three key labs under RIT, each with a specialized domain, are:
+The implementation of a FAIR data workflow at LAME is supported by the organizational context within Area Science Park. Specifically, the project is carried out under AREA’s Institute for Research and Technological Innovation (RIT – Istituto per la Ricerca e l’Innovazione Tecnologica). RIT is a multi-disciplinary research institute within Area Science Park that conducts fundamental research while also focusing on cutting-edge R\&D and providing advanced services to external partners. It is structured into several laboratories equipped with state-of-the-art technologies. The three key labs under RIT, each with a specialized domain, are:
 
 \begin{enumerate}
-	\item \textbf{LADE – Laboratorio di Data Engineering:}
+	\item \textbf{LADE – Laboratorio di Data Engineering (Data Engineering Laboratory):}  
 	A laboratory devoted to data infrastructure, data management, and artificial intelligence. LADE drives research and innovation in building AI-augmented data platforms, with a strong emphasis on FAIR-by-design approaches and open science. The LADE team designs and maintains the data systems that support RIT’s scientific work. Notably, LADE manages and analyzes the data produced by the genomics and microscopy labs (LAGE and LAME), and it oversees the IT infrastructure of RIT – specifically the ORFEO data center that powers large-scale computing and storage for the institute.
 	
-	\item \textbf{LAGE – Laboratorio di Genomica ed Epigenomica}
+	\item \textbf{LAGE – Laboratorio di Genomica ed Epigenomica (Genomics and Epigenomics Laboratory):}  
 	A genomics and epigenomics laboratory dedicated to DNA/RNA sequencing and genotyping. LAGE operates on an open-access model, integrating resources and expertise to provide services like high-throughput sequencing and genomic data analysis. The lab participates in numerous collaborations, contributing genomic insights to both fundamental research and applied projects (e.g. biomedical studies). LAGE generates massive sequencing datasets that require intensive data processing and secure storage, which in turn rely on the support of LADE’s data infrastructure.
 	
-	\item \textbf{LAME – Laboratorio di Microscopia Elettronica}
+	\item \textbf{LAME – Laboratorio di Microscopia Elettronica (Electron Microscopy Laboratory):}  
 	The Electron Microscopy lab which is the focus of this thesis. As described, LAME offers advanced material characterization with its double-corrected TEM/STEM instruments and FIB-SEM. The lab’s mission is aligned with European research standards, providing not only internal research capability but also open access to external users for competitive projects in nanoscience and nanotechnology. LAME’s integration into RIT means it works closely with the data engineering lab (LADE) to handle the large volumes of microscopy data and to develop new methods for data analysis (such as applying AI to microscopy images, an area of active interest).
 \end{enumerate}
 

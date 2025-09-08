@@ -54,11 +54,12 @@ cluster \parencite{ORFEO_Docs_Storage,orfeo-changelog-2024}.
 The \texttt{Ceph} cluster is configured with different tiers to meet varying 
 performance needs:
 \begin{itemize}
-	\item A “fast” pool of four \texttt{Ceph} nodes with \texttt{SSD}s (about 
-	279\,TiB raw capacity) for high-speed scratch storage.
-	\item 19 \texttt{Ceph} nodes with \texttt{HDD}s providing a larger capacity 
-	pool for standard storage (home directories and bulk scratch 
-	data) \parencite{ORFEO_Docs_Storage}.
+	\item Four \texttt{Ceph} nodes with \texttt{SSD}s (about 
+	279\,TiB raw capacity) provide high-speed storage, used both for 
+	home directories and for fast per-user scratch areas.  
+	\item 19 \texttt{Ceph} nodes with \texttt{HDD}s provide a larger capacity 
+	pool for standard shared scratch storage (bulk data and temporary analyses) 
+	\parencite{ORFEO_Docs_Storage}.
 \end{itemize}
 
 In practice, user data is striped and replicated across many disks and servers: 

@@ -1,7 +1,6 @@
 \chapter*{Conclusions}\label{chap:conclusions}
 % Do not edit
 \addcontentsline{toc}{chapter}{Conclusion}
-\label{chap:concl}
 \markboth{Conclusion}{Conclusion}
 
 This thesis investigated how the FAIR data principles can be applied to the 
@@ -11,7 +10,7 @@ difficulty of storing, organizing, and reusing these data in a systematic way.
 The goal was to design and implement a data pipeline and platform that make 
 microscopy datasets easier to manage and more useful in the long term.
 
-The work resulted in a FAIR-by-design pipeline that starts from the moment of 
+The work resulted in a solid and FAIR-by-design pipeline that starts from the moment of 
 data acquisition. Raw files are placed in an object store, enriched with 
 metadata, and where possible converted into standardized NeXus/NXem files. The 
 system records checksums and README files to keep track of provenance, and 
@@ -21,12 +20,7 @@ proposals, samples, and experiments, and to upload and browse their data.
 Background workers handle the heavier tasks such as checksum calculation and 
 file conversion, so that the web interface remains responsive.  
 
-To make sure the platform could be deployed safely in production, the work also 
-set up and used the VirtualOrfeo environment, which reproduces the main services 
-of the ORFEO cluster. This allowed testing of authentication, storage, and 
-deployment choices before moving to the real infrastructure. A layered software 
-design helped keep the different parts of the system — domain model, storage 
-gateway, background tasks, and user interfaces — clear and independent.
+To ensure that the platform could be deployed safely in production, all components were first developed and validated in the \emph{VirtualOrfeo} environment, a digital twin of the ORFEO cluster. This made it possible to test authentication, storage, and deployment choices without risk, before moving to the real infrastructure. The layered software design — with clear separation between the domain model, storage gateway, background tasks, and user interfaces — further contributes to robustness and maintainability. Overall, the work demonstrates that a FAIR-by-design pipeline for electron microscopy can be deployed on ORFEO, the high-performance computing and data center operated by Area Science Park in Trieste, providing a reproducible and future-proof solution for managing scientific data.
 
 There are several areas for future work. The NeXus writers can be extended to 
 validate files more strictly, convert units into standard forms, and support 
@@ -37,8 +31,28 @@ standards, would improve the visibility and reuse of the data. Finally, scaling
 up the system in production will require monitoring how it behaves under higher 
 data rates and adjusting the storage and queueing backends as needed.
 
-In summary, the thesis shows that FAIR data management for electron microscopy 
+Although this work focused on the electron microscopy workflows of LAME, its 
+design is not specific to a single technique. The same architecture — combining 
+structured uploads, object storage, NeXus-based metadata handling, and 
+background processing — can be adapted to other scientific domains such as 
+spectroscopy, tomography, or genomics, and reused across laboratories both 
+inside and outside Area Science Park. By keeping the components modular and 
+standards-based, the pipeline offers a general blueprint for FAIR data 
+management beyond microscopy.
+
+The software stack developed in this thesis is openly released on 
+GitHub\footnote{\url{https://github.com/NicolaPerin/fair-em-pipeline}} under the permissive 
+\emph{MIT License}. This allows other researchers to freely adopt, extend, and 
+integrate the platform into their own workflows, ensuring that the results of 
+this thesis contribute not only to local needs but also to the broader goals of 
+open science and reproducible research. In this sense, the project applies the 
+FAIR principles not only to scientific data but also to the tools that manage 
+them.
+
+In summary, this thesis shows that FAIR data management for electron microscopy 
 is possible with a pipeline and platform that combine standardized formats, 
 automated processing, and integration with laboratory workflows. The result is a 
-practical approach that supports both local research needs and the broader goals 
-of open and reproducible science.
+practical approach that supports both local research needs and the broader 
+objectives of scientific infrastructures, positioning ORFEO and Area Science Park 
+at the forefront of open and reproducible science in Europe.
+

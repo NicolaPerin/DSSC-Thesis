@@ -1,6 +1,3 @@
 \babel@toc {italian}{}\relax 
 \babel@toc {italian}{}\relax 
 \beamer@sectionintoc {2}{Context \& Goals}{3}{0}{1}
-\beamer@sectionintoc {3}{Infrastructure \& Platform}{7}{0}{2}
-\beamer@sectionintoc {4}{Design \& Implementation}{14}{0}{3}
-\beamer@sectionintoc {5}{Results \& Conclusions}{18}{0}{4}

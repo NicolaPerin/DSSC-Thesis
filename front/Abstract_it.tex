@@ -1,16 +1,23 @@
 \chapter{Abstract, italian}
 
-Gli esperimenti di microscopia elettronica (EM) generano dataset molto grandi e complessi. Questi sono spesso memorizzati in formati specifici del fornitore con pochi metadati, il che li rende difficili da condividere, riprodurre o riutilizzare. Per affrontare questo problema, questa tesi applica i principi FAIR---Findable, Accessible, Interoperable e Reusable---ai flussi di lavoro del Laboratorio di Microscopia Elettronica (LAME) di Trieste, Italia.
+Gli esperimenti di microscopia elettronica (EM) generano dataset molto grandi e complessi. 
+Questi sono spesso memorizzati in formati proprietari con poche informazioni descrittive (metadata), 
+il che rende difficile condividerli, riprodurli o riutilizzarli.  
+Per affrontare questo problema, questa tesi applica i principi FAIR---Findable, Accessible, Interoperable, Reusable---ai flussi di lavoro del \textit{Laboratorio di Microscopia Elettronica} (LAME), parte dell’Istituto di \textit{Ricerca e Innovazione Tecnologica} (RIT) presso Area Science Park a Trieste.
 
-Il progetto sviluppa e testa un'infrastruttura dati \emph{FAIR-by-design} che:
+Il progetto sviluppa e testa un’infrastruttura dati FAIR-by-design che:
 \begin{itemize}
-	\item cattura dati e metadati direttamente durante l’acquisizione,
+	\item cattura dati e metadata direttamente durante l’acquisizione,
 	\item li converte e archivia automaticamente in formato standardizzato NeXus/NXem,
-	\item utilizza un data lake centralizzato per garantire durabilità e scalabilità,
+	\item utilizza un \textit{data lake} centralizzato per garantire durabilità e scalabilità,
 	\item e fornisce un’applicazione web per caricamenti strutturati, annotazioni e accesso.
 \end{itemize}
 
-Il sistema separa le operazioni di microscopia dall’elaborazione intensiva, affidandosi al centro di calcolo ad alte prestazioni ORFEO per archiviazione e computazione. Un ambiente di test virtuale è stato utilizzato per sviluppare e validare in sicurezza lo stack software prima del rilascio in produzione. Questo garantisce che i dati EM vengano preservati in formati interoperabili, arricchiti con metadati e pronti per l’accesso aperto.
+Il sistema separa le operazioni al microscopio dall’elaborazione intensiva, 
+affidandosi al centro di calcolo ad alte prestazioni ORFEO per archiviazione e computazione.  
+Un ambiente virtuale di test è stato usato per sviluppare e validare in sicurezza lo stack software prima del rilascio in produzione.  
+Questo assicura che i dati EM vengano conservati in formati interoperabili, arricchiti con metadata e pronti per l’accesso aperto.
 
-Il lavoro contribuisce con un modello pratico per una gestione dei dati FAIR e riproducibile in microscopia, con il potenziale di scalare all’interno del programma NFFA-DI e allinearsi alle politiche europee di \emph{open science}.
-
+Il lavoro contribuisce con un modello pratico e innovativo per la gestione FAIR e riproducibile dei dati in microscopia, 
+con il potenziale di scalare ad altre infrastrutture di ricerca in scienza dei materiali, come quelle affiliate al programma NFFA-DI\footnote{\url{https://nffa-di.it/it/about-us/project/}}, 
+e di allinearsi alle politiche europee per la scienza aperta.

@@ -162,7 +162,7 @@ After evaluating the options, we decided to use \textbf{PostgreSQL} as the datab
 	\end{itemize}
 \end{itemize} 
 
-The configuration is straightforward – we installed the \texttt{psycopg2} adapter (which allows Django to talk to Postgres) and updated our \texttt{DATABASES} setting in Django to use the \texttt{django.\allowbreak db.\allowbreak backends.\allowbreak postgresql} engine with the appropriate credentials. Django handles the rest through its ORM, so all our data models defined in Python were automatically translated into PostgreSQL tables via migrations. Overall, PostgreSQL provides a solid foundation for storing the application’s critical data, offering both peace of mind (in terms of reliability) and powerful capabilities if we need them down the road.
+The configuration is straightforward – we installed the \texttt{psycopg2} adapter (which allows Django to talk to Postgres) and updated our \texttt{DATABASES} setting in Django to use the \texttt{django.\allowbreak db.\allowbreak backends.\allowbreak postgresql} engine with the appropriate credentials. Django handles the rest through its object–relational mapping system, so all our data models defined in Python were automatically translated into PostgreSQL tables via migrations. Overall, PostgreSQL provides a solid foundation for storing the application’s critical data, offering both peace of mind (in terms of reliability) and powerful capabilities if we need them down the road.
 
 \subsection{Django’s ORM (Object-Relational Mapper)} 
 

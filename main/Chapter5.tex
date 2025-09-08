@@ -1,17 +1,34 @@
 \chapter{Deep dive into the application}\label{chap:deep-dive-app}
 
-This chapter gives an implementation-focused look at the Django application for experimental data management. 
-The system is built with a layered architecture that separates business rules, storage access, background processing, and presentation. 
-It connects to an external identity provider (Authentik via OIDC), stores both raw and derived data in an S3-compatible object store (Ceph RGW/MinIO), 
-and uses Redis Queue (RQ) for asynchronous tasks.
-The following sections describe the data model, information flows, metadata handling, NeXus file construction, storage gateway, 
-background jobs, API and user interface, the in-app security model, and performance and scalability aspects.
+This chapter gives an implementation-focused look at the Django application for experimental data management.  
+The system follows a layered architecture that separates business rules, storage access, background processing, and presentation.  
+Experimental data are organized in a clear hierarchy of projects, proposals, samples, and experiments, with each creation 
+automatically writing metadata into S3 buckets alongside the raw files.  
+Large microscope outputs are uploaded directly to object storage through presigned URLs, keeping the web server lightweight, 
+while background workers (Redis Queue) handle checksums, NeXus conversions, and other heavier tasks.  
+Metadata extracted from TIFFs is translated into standardized NeXus/NXem structures via JSON mapping files, 
+making the system adaptable across instruments.  
+A thin storage gateway hides S3 details, simplifying development and testing, while a REST API exposes the same operations 
+available in the browser-based management board. The UI itself uses HTMX modals for interactive creation and validation.  
+Authentication is delegated to Authentik via OIDC; group claims control authorization; presigned URLs enforce strict, 
+time-limited access to storage.  
+Checksums, README files, and logs together ensure traceability, while the architecture separates uploads from processing, 
+allowing independent scaling of web and worker processes.  
+Overall, the platform is robust, scalable, and FAIR-oriented, providing a reproducible and future-proof approach to handling 
+growing volumes of microscopy data.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Domain model and data flow}\label{sec:domain-dataflow}
 
-\paragraph{Entities.}
+In this section, we describe how the application structures and manages 
+its information. We first introduce the core entities of the domain model, 
+then explain how these entities are created and linked to storage through 
+domain commands. Finally, we outline the typical lifecycle of data as it 
+flows from user input to raw storage, metadata capture, and background 
+processing.
+
+\paragraph{a) Entities.}
 The application organises information into four main building blocks, each represented by a Django model:
 
 \begin{itemize}
@@ -42,7 +59,7 @@ The application organises information into four main building blocks, each repre
 The database enforces these uniqueness rules through Django’s \texttt{Meta} constraints (\texttt{UniqueConstraint} or 
 \texttt{unique\_together}), which prevents accidental duplication.  
 
-\paragraph{Domain commands.}
+\paragraph{b) Domain commands.}
 To create these entities, the application does not call the models directly.  
 Instead, it uses command functions in \texttt{domain/commands.py}, such as \texttt{create\_proposal}, 
 \texttt{create\_sample}, and \texttt{create\_experiment}.  
@@ -66,7 +83,7 @@ a new row is added to the relational database, the bucket (if any) is guaranteed
 so that anyone browsing raw data can also see the associated metadata.
 
 
-\paragraph{Lifecycle and flow.}
+\paragraph{c) Lifecycle and flow.}
 The typical sequence of actions is:
 
 \begin{enumerate}
@@ -136,14 +153,20 @@ Background jobs that compute checksums use \texttt{update\_or\_create}, so retri
 
 \section{Metadata path}\label{sec:metadata-path}
 
-\paragraph{TIFF ingestion.}
+In this section, we describe how metadata are captured, translated, and stored 
+when new measurements are uploaded. Starting from raw TIFF files, the system 
+extracts instrument-specific metadata, applies mapping rules to align them with 
+NeXus conventions, and normalizes values into a consistent, machine-readable 
+NXem structure.
+
+\paragraph{a) TIFF ingestion.}
 Most raw microscope outputs arrive as TIFF files. When a user uploads them, the system only stores the object keys immediately; 
 the heavy work of reading the files is left to background workers. 
 TIFF parsing happens inside the builder services (see \S\ref{sec:nexus-construction}). 
 For large files, the app relies on S3’s \texttt{StreamingBody} so data can be read in chunks instead of all at once. 
 Typical chunk sizes are 8–16\,MiB, which are also used in checksum calculation and ZIP streaming to avoid memory spikes.
 
-\paragraph{Instrument metadata extraction and mapping.}
+\paragraph{b) Instrument metadata extraction and mapping.}
 Each instrument family writes metadata into TIFF headers in its own way. 
 To avoid hard-coding these differences in the code, the system uses JSON mapping files stored under \texttt{experiment\_manager/data/} 
 (for example \texttt{ED\_mapping.json}, \texttt{TVIPS\_mapping.json}). 
@@ -151,7 +174,7 @@ These files describe how to translate instrument-specific keys into NeXus fields
 The chosen instrument pair (instrument + detector) is passed from the UI (\texttt{PAIRS} in \texttt{views.py}) 
 through the \texttt{register\_measurement()} call and finally into the builder.
 
-\paragraph{Translation to NXem concepts.}
+\paragraph{c) Translation to NXem concepts.}
 The NXem definition (NeXus for electron microscopy) expects a common structure: 
 an entry node with subgroups for instrument, detector, and sample, each containing well-known fields 
 such as pixel size, accelerating voltage, camera length, and dwell time. 
@@ -203,7 +226,13 @@ By moving the instrument-specific rules into data files, the builder code stays 
 
 \section{NeXus construction}\label{sec:nexus-construction}
 
-\paragraph{Responsibilities and split.}
+In this section, we describe how the system constructs NeXus files from the raw 
+inputs and metadata prepared earlier. The process separates low-level file 
+writing from orchestration, applies common scaffolding across all instruments, 
+and then fills in instrument-specific details using mapping rules. The result is 
+a standardized NXem structure ready for storage and reuse.
+
+\paragraph{a) Responsibilities and split.}
 The NeXus build process separates the code that \emph{creates} a NeXus file 
 from the code that decides \emph{where and when} it should be stored:
 
@@ -218,7 +247,7 @@ from the code that decides \emph{where and when} it should be stored:
 	Its main entry point is \path{build_and_upload_nexus(...)}.
 \end{itemize}
 
-\paragraph{Common scaffold (writer core).}
+\paragraph{b) Common scaffold (writer core).}
 Both builders share a common function \path{_build_scaffold(...)} that sets up the basic NeXus file. 
 It runs through the following steps:
 
@@ -260,7 +289,7 @@ It runs through the following steps:
 	If a header dictionary is given, it is saved as a JSON \path{NXnote} called \path{hdr_metadata}.
 \end{enumerate}
 
-\paragraph{Instrument-specific population.}
+\paragraph{c) Instrument-specific population.}
 After the scaffold, a small \emph{population} step adds instrument-facing structure in a uniform way. The builder selects a pair-specific helper from the registry and uses it to (i) ensure the expected NXem layout exists and (ii) attach common instrument nodes. Concretely, the helper:
 \begin{itemize}
 	\item guarantees the presence of an events branch \path{NXentry/measurement/events/event_data} with \path{NX_class=NXevent_data_em};
@@ -270,7 +299,7 @@ After the scaffold, a small \emph{population} step adds instrument-facing struct
 \end{itemize}
 Acquisition-specific quantities (such as exposure time, pixel size, beam voltage, trigger mode) are intentionally supplied by the JSON mapping rather than hard-coded here. Adding support for a new instrument means contributing a new population helper and its mapping file; the scaffold and orchestration remain unchanged.
 
-\paragraph{Mapping mechanics (example).}
+\paragraph{d) Mapping mechanics (example).}
 Mappings reference \emph{flattened} TIFF metadata keys on the left, and dotted NeXus paths on the right. A (shortened) TVIPS example:
 \begin{verbatim}
 	ImageDescription.camera.start_time
@@ -292,10 +321,10 @@ Mappings reference \emph{flattened} TIFF metadata keys on the left, and dotted N
 \end{verbatim}
 \noindent Paths are created on demand; where the code knows the NeXus class for a node (e.g.\ \path{NXdetector}, \path{NXebeam_column}), it stamps \path{NX_class} accordingly.
 
-\paragraph{What the writer deliberately \emph{does not} do (yet).}
+\paragraph{e) What the writer deliberately \emph{does not} do (yet).}
 The current implementation \emph{does not} convert units, change data types, or check the full schema beyond combining the start time and making sure core groups exist. Values are written \emph{as they are} from the flattened metadata. This shifts complexity into the mapping files and keeps the writer straightforward. Section~\ref{sec:nexus-construction-validation-future} describes planned improvements.
 
-\paragraph{Orchestration and publishing.}
+\paragraph{f) Orchestration and publishing.}
 The function \path{build_and_upload_nexus(...)} manages the full flow:
 
 \begin{enumerate}
@@ -312,7 +341,7 @@ The function \path{build_and_upload_nexus(...)} manages the full flow:
 	\item \textbf{Publish and clean up.} The \path{.nxs} is uploaded to the mirror bucket under the same key path (extension changed). Temp files are cleaned in a \path{finally} block. All steps are wrapped in broad exception handling with structured logging; failures return \path{None} so the queue can retry if needed.
 \end{enumerate}
 
-\paragraph{Resulting file layout (as written).}
+\paragraph{g) Resulting file layout (as written).}
 The produced tree reflects the code’s naming and hierarchy:
 \begin{itemize}
 	\item \path{/NXentry} (\path{NXentry}) with \path{definition="NXem"}, \path{start_time}, and optional \path{experiment_identifier}; the sample is mounted at \path{/NXentry/SAMPLE} (\path{NXsample}).
@@ -324,10 +353,10 @@ The produced tree reflects the code’s naming and hierarchy:
 \end{itemize}
 \noindent Group names like \path{NXentry} and \path{SAMPLE} are capitalised/explicit rather than the conventional \path{entry}/\path{sample}; this matches the writer and avoids validator warnings in our environment.
 
-\paragraph{Operational characteristics.}
+\paragraph{h) Operational characteristics.}
 Builders run entirely in-process and load the full TIFF into memory via \path{tifffile.imread}; this is acceptable for current file sizes. For very large frame stacks, the API can be extended to use memory-mapped reads or external links.
 
-\paragraph{Limitations and planned validation}\label{sec:nexus-construction-validation-future}
+\paragraph{i) Limitations and planned validation}\label{sec:nexus-construction-validation-future}
 The following checks are \emph{not} yet implemented and are planned:
 \begin{itemize}
 	\item \textbf{Schema validation:} verify required NXem fields, classes, and attributes post-write (e.g.\ via \path{nexusformat} traversal or \path{punx} validation hooks).
@@ -336,7 +365,7 @@ The following checks are \emph{not} yet implemented and are planned:
 	\item \textbf{Multi-page TIFFs:} support frame stacks with an explicit \path{signal} dimension and timebase metadata.
 \end{itemize}
 
-\paragraph{Traceability and repeat-safety.}
+\paragraph{j) Traceability and repeat-safety.}
 The target key is deterministically derived from the TIFF key by changing the extension to \path{.nxs}; re-runs overwrite the same object in the mirror bucket. Logs carry the pair, RAW and mirror locations, and mapping path. Combined with the checksum pipeline (\S\ref{sec:background-tasks}), this gives a clear and reproducible conversion trail.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -681,7 +710,8 @@ After login, users land on dashboards tailored to their role:
 Guests who are not logged in see only a minimal landing page and are redirected to the dashboard once authenticated.
 
 \paragraph{Bucket and file views.}
-The application also provides a direct window into S3 buckets.  
+The application also provides a direct window into S3 buckets, a feature not 
+available in the native Ceph RGW interface.  
 \texttt{/buckets/} lists proposals with their RAW or mirrored (\texttt{/ofed/}) buckets.  
 \texttt{/buckets/<bucket>/?prefix=...} renders a file-browser–like view by scanning keys and grouping them into “folders.”  
 
@@ -773,7 +803,7 @@ The client-side code is deliberately kept small:
 	\caption{HTMX modal flow. After form submission, the server either replies with \texttt{204 No Content} (success: close modal, refresh pane) or with \texttt{200 OK} and the form HTML filled with errors (failure: modal re-renders).}
 \end{figure}
 
-\subsection{User interface walkthrough}\label{sec:ui-screenshots}
+\section{User interface walkthrough}\label{sec:ui-screenshots}
 
 This section illustrates how a user interacts with the application, step by step, 
 from logging in to browsing stored experimental data. 
@@ -1030,9 +1060,3 @@ Web processes and background workers can scale separately.
 The main scaling factor is storage: moving from local volumes to a CSI-backed block store\footnote{CSI (Container Storage Interface) is a standard for connecting Kubernetes to different storage systems.} or to an external S3 cluster requires no code change because everything goes through the storage gateway abstraction.  
 Redis can be replaced by a managed service if needed; RQ workers keep working the same way.  
 The API and UI servers are stateless (except for the shared database), which means they can be horizontally scaled behind the load balancer without special coordination.
-
-
-\bigskip
-
-\noindent\textbf{Summary.}
-This chapter takes a detailed look at the Django application for managing experimental data. The system organizes projects, proposals, samples, and experiments in a clear hierarchy, with each creation automatically writing metadata into S3 buckets alongside the raw data. Large microscope outputs are uploaded directly to object storage through presigned URLs, keeping the web server light, while background workers handle heavier jobs like checksums and NeXus conversions. Metadata from TIFFs is translated into standardized NeXus structures using JSON mapping files, making the system adaptable across instruments. All storage operations go through a thin gateway layer that hides S3 details and simplifies testing. A REST API exposes the same functionality available in the browser-based management board, which uses HTMX modals for interactive creation and error handling. Authentication is delegated to Authentik via OIDC, group claims control authorization, and presigned URLs enforce strict, time-limited access. Checksums, READMEs, and logs together provide a consistent record of data handling. Finally, the architecture separates uploads from processing, allows workers and web processes to scale independently, and ensures resilience through retries and safe replays, making the platform both robust and scalable for growing data needs.

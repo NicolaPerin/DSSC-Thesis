@@ -4,7 +4,11 @@
 
 To develop and test the data management platform in a realistic but safe setting, we use an internal system called \textbf{VirtualOrfeo}. VirtualOrfeo functions as a \emph{digital twin} of the ORFEO HPC cluster: a virtualized replica of its key infrastructure and services. This allows us to deploy and evaluate applications under conditions that closely mimic production, without the risk of disrupting the actual cluster. Digital twins are often used in High-Performance Computing (HPC) to experiment with configuration changes or new workflows before rolling them out in production \parencite{Ohmura2023TwdsDT}.
 
-VirtualOrfeo was originally created by Isac Pasianotto and Ruggero Lot as a general-purpose environment for ORFEO infrastructure testing. The work in this thesis builds on their platform: we use it to deploy and integrate the data management application, while the underlying environment itself is their contribution.
+VirtualOrfeo was originally created by Isac Pasianotto, a PhD student at the University of Trieste, 
+and Ruggero Lot, former technologist and system administrator of the ORFEO cluster, 
+as a general-purpose environment for ORFEO infrastructure testing. 
+The work in this thesis builds on their platform: we use it to deploy and integrate the data management application, 
+while the underlying environment itself is their contribution.
 
 The system is built from a collection of virtual machines (VMs) that replicate the main roles of the HPC cluster. They run on Linux KVM/QEMU and are managed through Vagrant and Ansible. The virtual machines represent essential services rather than the full production scale. For example:  
 
@@ -291,10 +295,9 @@ Kubernetes, we created a Kubernetes Service and Ingress that points to the RGW:
 	address of the VM running RGW) and the port (7480 for plain HTTP or 8080 with 
 	SSL termination). Essentially, this registers an external service inside 
 	Kubernetes.  
-	\item The \textbf{Ingress} for RGW uses the host \texttt{rgw.k3s.virtualorfeo.it} 
-	(or alternatively \texttt{s3.k3s.virtualorfeo.it} as configured in 
-	VirtualOrfeo’s Nginx proxy). We added annotations to allow large uploads 
-	(disabling body size limits and request buffering, since experimental data can 
+	\item The \textbf{Ingress} for RGW uses the host \texttt{rgw.k3s.virtualorfeo.it}. 
+	We added annotations to allow large uploads (disabling body size limits and 
+	request buffering, since experimental data can 
 	be quite large). It routes all paths under that host to the RGW service. The 
 	ingress is secured with TLS using a certificate issued by the FreeIPA CA.  
 	\item This setup means that any application inside the cluster can access the 
@@ -344,8 +347,8 @@ paths.
 
 \medskip
 
-After an upload, the system generates a NeXus file (an HDF5-based structured data 
-file) containing metadata and possibly processed data. We store these NeXus files 
+After an upload, the system generates a NeXus file (see Section~\ref{sec:nexus-format}) 
+containing metadata and possibly processed data. We store these NeXus files 
 alongside the raw data or in a parallel location. Common strategies include:  
 
 \begin{itemize}
@@ -368,7 +371,9 @@ standardized rather than proprietary \parencite{Koennecke2015NeXusFormat,
 	Korir2024TenRecs}. NeXus (built on HDF5) can encapsulate not only the image data 
 but also relevant metadata (instrument settings, timestamps, sample identifiers, 
 etc.) in one file \parencite{Koennecke2015NeXusFormat}. This ensures that years 
-later, users still have a usable record of the experiment.  
+later, users still have a usable record of the experiment, and that the data 
+remain interoperable with community platforms like NOMAD\footnote{\url{https://nomad-lab.eu/}, 
+	a FAIR data platform for materials science that supports NeXus/HDF5 ingestion}.
 
 This focus on interoperability and reuse reflects the FAIR principles (Findable, 
 Accessible, Interoperable, Reusable). By having VirtualOrfeo’s storage mimic the 

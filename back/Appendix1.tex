@@ -1,1 +1,137 @@
-\chapter{appendix1}\label{appendix:appendix1}
+% If you're not already in appendix mode elsewhere, keep \appendix.
+% If you already called \appendix earlier, remove the next line.
+\appendix
+
+\chapter{Tools and technologies}\label{app:tools}
+
+This appendix lists the main tools, libraries, and platform components used in the project, in alphabetical order, with brief notes on how each is used.
+
+\begin{description}[style=nextline]
+	
+	\item[ACME]
+	Protocol used by \texttt{cert-manager} to automatically obtain and renew TLS certificates from the internal FreeIPA CA.
+	
+	\item[Ansible]
+	Automation tool used (together with Vagrant) to provision the VirtualOrfeo VMs and bootstrap services.
+	
+	\item[aria2]
+	Command-line downloader. The app generates \texttt{.aria2.txt} manifests for high-throughput, parallel downloads from presigned S3 URLs.
+	
+	\item[Authentik]
+	Open-source Identity Provider (IdP) providing OIDC/OAuth2. It syncs users/groups from FreeIPA and issues the tokens used by the Django app.
+	
+	\item[Boto3]
+	Python SDK used by the storage gateway to talk to S3-compatible object stores (Ceph RGW / MinIO): create buckets, list, upload, presign URLs.
+	
+	\item[Ceph]
+	Distributed storage platform used in VirtualOrfeo to replicate ORFEO’s storage architecture.
+	
+	\item[Ceph RADOS Gateway (RGW)]
+	The S3-compatible object storage interface of Ceph. The application stores raw and derived data here via the S3 API.
+	
+	\item[CephFS]
+	(Where relevant) POSIX-style distributed filesystem on Ceph, used in the real ORFEO environment for shared storage tiers.
+	
+	\item[cert-manager]
+	Kubernetes add-on that automates TLS certificates (via ACME) for Ingresses; integrated with the FreeIPA CA in VirtualOrfeo.
+	
+	\item[Django]
+	Python web framework used for the application (MVT pattern, forms, views, templates, ORM, admin).
+	
+	\item[Django REST Framework (DRF)]
+	Toolkit used to expose a REST API (serializers, viewsets, routers) for programmatic access to projects, proposals, samples, experiments.
+	
+	\item[django-rq]
+	Django integration for Redis Queue, providing a simple web UI to inspect queues, running and failed jobs.
+	
+	\item[Docker]
+	Containerization of the web app and worker processes; images are deployed to K3s via Helm.
+	
+	\item[FreeIPA]
+	Authoritative directory for users/groups and internal Certificate Authority (CA). Authentik binds to FreeIPA over LDAP.
+	
+	\item[Git]
+	Version control for the codebase, Helm charts, and infrastructure manifests.
+	
+	\item[Gunicorn]
+	WSGI server running the Django application; paired with an NGINX sidecar in Kubernetes.
+	
+	\item[HDF5]
+	Binary container format underlying NeXus. The generated \texttt{.nxs} files store arrays and rich metadata together.
+	
+	\item[Helm]
+	Kubernetes package manager. The app is shipped as a Helm chart (web deployment, worker, Redis, Postgres, Ingress, Secrets, Jobs).
+	
+	\item[HTMX]
+	Small JS library enabling declarative AJAX. Powers the modal forms and dynamic pane refreshes in the management board.
+	
+	\item[JSON]
+	Data format for API payloads and for the instrument-to-NeXus mapping files used during metadata translation.
+	
+	\item[JWT (JSON Web Token)]
+	Signed tokens issued by Authentik (OIDC) and validated by the app for authentication and claims (e.g., groups).
+	
+	\item[K3s]
+	Lightweight, CNCF-certified Kubernetes distribution used to run the virtual cluster in VirtualOrfeo.
+	
+	\item[Kubernetes]
+	Orchestrates containers (Deployments, Services, Ingress, Secrets, ConfigMaps, Jobs) for the application stack.
+	
+	\item[KVM/QEMU]
+	Virtualization stack used by VirtualOrfeo to run the VMs that emulate ORFEO’s services.
+	
+	\item[MetalLB]
+	Bare-metal load balancer for Kubernetes. Assigns a routable IP to the Ingress controller inside VirtualOrfeo.
+	
+	\item[MinIO]
+	S3-compatible object store used as a simpler alternative to Ceph RGW in tests; the app speaks to it via the same S3 API.
+	
+	\item[NeXus]
+	Community standard (built on HDF5) for storing scientific data + metadata. The app builds \texttt{.nxs} outputs for interoperability.
+	
+	\item[NGINX]
+	Reverse proxy sidecar for static files and request handling in front of Gunicorn; also used as the cluster Ingress controller.
+	
+	\item[NXem]
+	NeXus application definition for electron microscopy. Guides the schema the writers populate from TIFF metadata.
+	
+	\item[OpenID Connect (OIDC)]
+	Auth protocol used for SSO: the Django app is an OIDC client of Authentik.
+	
+	\item[PostgreSQL]
+	Relational database backing the Django ORM in deployment (SQLite is used only for quick local tests).
+	
+	\item[Python]
+	Primary programming language for the backend, workers, and tooling.
+	
+	\item[Redis]
+	In-memory data store used as the broker/backend for Redis Queue (RQ).
+	
+	\item[Redis Queue (RQ)]
+	Lightweight background job system. Handles checksum computation and NeXus builds without blocking web requests.
+	
+	\item[Requests]
+	Python HTTP library used indirectly (via boto3 and integrations) for HTTPS calls honoring the internal CA bundle.
+	
+	\item[S3 API (Amazon S3–compatible)]
+	Object storage protocol used by the app (presigned PUT/GET, buckets, keys). Implemented by Ceph RGW and MinIO.
+	
+	\item[\texttt{tifffile}]
+	Python library to read TIFF headers/data during ingestion and NeXus construction.
+	
+	\item[TLS]
+	Encryption for all web endpoints and S3 URLs; certificates issued by the internal CA via cert-manager.
+	
+	\item[Uppy]
+	Browser file uploader (drag-and-drop, retries, progress). Uses presigned URLs to upload directly to object storage.
+	
+	\item[Vagrant]
+	VM lifecycle manager used to spin up the VirtualOrfeo machines in a reproducible way.
+	
+	\item[YAML]
+	Configuration format for Kubernetes manifests and Helm values.
+	
+	\item[\texttt{zipstream-ng}]
+	Server-side streaming ZIP generator used to download large folder trees without buffering entire archives in memory.
+	
+\end{description}
