@@ -11,9 +11,6 @@ main-blx.bib
 
 pdfa.xmpi
 
-# pdf document (comment it at the end)
-main.pdf
-
 # minted folder
 _minted-main/
 _minted-main/*
