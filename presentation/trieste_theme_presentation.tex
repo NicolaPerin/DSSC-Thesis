@@ -57,9 +57,19 @@
 		\maketitle
 	\end{frame}
 	
-	% Agenda
+	% --- Outline ---
 	\begin{frame}
 		\frametitle{Outline}
+		\begin{enumerate}
+			\item Electron microscopy data: what it looks like and where the problems are
+			\item FAIR principles and the NeXus (NXem) standard
+			\item The case study: LAME and the ORFEO datacenter
+			\item From lab problems to a proposal
+			\item Designing the web application
+			\item Testing with VirtualOrfeo
+			\item Walking through the app
+			\item Live demo
+		\end{enumerate}
 	\end{frame}
 	
 	% =====================
@@ -90,7 +100,7 @@
 				\item \textbf{Need}: structured metadata, persistent IDs, scalable storage, simple tools.
 			\end{itemize}
 			\column{0.42\textwidth}
-			%\includegraphics[width=\textwidth]{img/diagrams/data_fragments_placeholder.png}% optional
+			%\includegraphics[width=\textwidth]{otherResources/data_fragments_placeholder.png}% optional
 		\end{columns}
 	\end{frame}
 	
@@ -301,126 +311,143 @@
 	% --- 5) App walkthrough ---
 	
 	\begin{frame}
-		\frametitle{How the App is Structured}
+		\frametitle{Application overview}
+		
+		The webapp ties together three main layers:
+		
+		\vspace{0.8em}
 		\begin{itemize}
-			\item Domain: Project → Proposal → Sample → Experiment → Measurements.
-			\item Data plane: browser ↔ S3 using presigned URLs; metadata in Postgres.
-			\item Workers: checksum, metadata extraction, NeXus builds.
+			\item \textbf{Domain model}  
+			Projects contain proposals, samples, experiments, and their measurements.
+			
+			\item \textbf{Data flow}  
+			Files go directly into S3 buckets (via presigned URLs), 
+			while metadata lives in Postgres.
+			
+			\item \textbf{Background workers}  
+			Dedicated pods run checksums, extract metadata, and generate NeXus files.
 		\end{itemize}
-		%\includegraphics[width=\textwidth]{img/diagrams/app_architecture_placeholder.png
 	\end{frame}
 	
+	% --- Research data model ---
 	\begin{frame}
-		\frametitle{Logging In}
-		\framesubtitle{Identity before data}
-		\begin{columns}[T,totalwidth=\textwidth]
-			\column{0.52\textwidth}
+		\frametitle{Research data model}
+		
+		The app organizes research work in a structured chain:
+		
+		\vspace{1em}
+		\centering
+		\resizebox{\textwidth}{!}{%
+			\begin{tikzpicture}[thick]
+				
+				% geometry
+				\def\h{3.0}
+				\def\w{3.0}
+				\def\t{1.0}
+				
+				\newcommand{\chevron}[4]{%
+					\begin{scope}[shift={(#1,0)}]
+						\path[draw=black, fill=#4, line join=round]
+						(0,0) -- (\w,0) -- (\w+\t,0.5*\h) -- (\w,\h) -- (0,\h) -- (\t,0.5*\h) -- cycle;
+						\node[align=center, xshift=7mm] at (\w/2,0.5*\h)
+						{\textbf{#2} \\[0.3em] \scriptsize #3};
+					\end{scope}
+				}
+				
+				% chain
+				\chevron{0*\w}{Project}{NFFA-DI}{green!35}
+				\chevron{1*\w}{Proposal}{\texttt{proposal\_id}}{teal!40}
+				\chevron{2*\w}{Sample}{material under test}{cyan!40}
+				\chevron{3*\w}{Experiment}{instrument session}{blue!30}
+				\chevron{4*\w}{Measurement}{images, spectra}{blue!45}
+				
+			\end{tikzpicture}%
+		}
+		
+		\vspace{1em}
+		\small
+		This keeps context together with raw data, making results easier to track and reuse.
+	\end{frame}
+	
+	% --- Managing research data in practice ---
+	\begin{frame}
+		\frametitle{Managing research data in practice}
+		
+		\begin{itemize}
+			\item Three-pane board to browse and link projects, samples, and experiments.
+			\item Metadata (context) stored alongside raw data (\texttt{README.txt}).
+			\item Same operations available via REST API for automation.
+		\end{itemize}
+		
+		\vspace{1em}
+		\centering
+		\includegraphics[width=0.8\textwidth]{otherResources/ui_add_measurement.png}
+	\end{frame}
+	
+	% --- Uploading data ---
+	\begin{frame}
+		\frametitle{From upload to storage}
+		
+		\begin{itemize}
+			\item The app issues a one-time presigned URL.
+			\item Browser streams data \textbf{directly to S3}, bypassing the webserver.
+			\item Uploads automatically trigger a background job:
+			checksum $\to$ metadata extraction $\to$ NeXus build.
+		\end{itemize}
+		
+		\vspace{1em}
+		\centering
+		\includegraphics[width=0.6\textwidth]{otherResources/ui_file_picker.png}
+	\end{frame}
+	
+	% --- Workers and NeXus pipeline ---
+	\begin{frame}
+		\frametitle{Background workers: from raw files to NeXus}
+		
+		\begin{itemize}
+			\item A \textbf{worker pod} runs in the cluster, always listening to Redis (a shared \textbf{to-do list}).  
+			\item When a file is uploaded, the app enqueues jobs such as:  
 			\begin{itemize}
-				\item Auth handled by Authentik (OIDC).
-				\item Django sees tokens, not passwords.
-				\item Group claims set roles; disabling an account works instantly.
+				\item Integrity check (checksum).  
+				\item Metadata extraction (parse TIFF headers or JSON).  
+				\item Normalization into NXem fields.  
+				\item NeXus generation: structured \texttt{.nxs} file with metadata.  
 			\end{itemize}
-			\column{0.48\textwidth}
-			%\includegraphics[width=\textwidth]{img/screenshots/login_authentik.png}
-		\end{columns}
+			\item Jobs are picked up one by one, retried automatically if they fail.  
+		\end{itemize}
 	\end{frame}
 	
+	% --- Browsing and sharing ---
 	\begin{frame}
-		\frametitle{Managing Research Data}
-		\framesubtitle{Projects, Samples, Experiments}
-		\begin{columns}[T,totalwidth=\textwidth]
-			\column{0.52\textwidth}
-			\begin{itemize}
-				\item Three-pane board to create and link entities.
-				\item Context stored next to raw data (\texttt{README.txt}).
-				\item Same functionality via REST API for automation.
-			\end{itemize}
-			\column{0.48\textwidth}
-			%\includegraphics[width=\textwidth]{img/screenshots/board_overview.png}
-		\end{columns}
-	\end{frame}
-	
-	\begin{frame}
-		\frametitle{Uploading Data}
-		\framesubtitle{Presigned S3 PUT}
-		\begin{columns}[T,totalwidth=\textwidth]
-			\column{0.55\textwidth}
-			\begin{itemize}
-				\item App gives a one-time URL, browser streams directly to storage.
-				\item Handles large files without overloading the web server.
-				\item Uploads automatically trigger checksum and registration jobs.
-			\end{itemize}
-			\column{0.45\textwidth}
-			%\includegraphics[width=\textwidth]{img/screenshots/upload_form.png}
-		\end{columns}
-	\end{frame}
-	
-	\begin{frame}
-		\frametitle{From TIFF to NeXus}
-		\framesubtitle{Metadata extraction and mapping}
-		\begin{columns}[T,totalwidth=\textwidth]
-			\column{0.52\textwidth}
-			\begin{itemize}
-				\item Extract metadata from TIFF headers or JSON blocks.
-				\item Normalize values and map into NXem fields.
-				\item Build \texttt{.nxs} files with a standard structure.
-			\end{itemize}
-			\column{0.48\textwidth}
-			%\includegraphics[width=\textwidth]{img/screenshots/nexus_preview.png}
-		\end{columns}
-	\end{frame}
-	
-	\begin{frame}
-		\frametitle{Background Jobs}
-		\framesubtitle{Let workers handle the heavy tasks}
-		\begin{columns}[T,totalwidth=\textwidth]
-			\column{0.52\textwidth}
-			\begin{itemize}
-				\item RQ queues for checksums and NeXus builds.
-				\item Jobs are idempotent, retry automatically if needed.
-				\item Monitoring via web UI and structured logs.
-			\end{itemize}
-			\column{0.48\textwidth}
-			%\includegraphics[width=\textwidth]{img/screenshots/rq_dashboard.png}
-		\end{columns}
-	\end{frame}
-	
-	\begin{frame}
-		\frametitle{Browsing and Sharing}
+		\frametitle{Browsing and sharing data}
 		\framesubtitle{Buckets and downloads}
-		\begin{columns}[T,totalwidth=\textwidth]
-			\column{0.55\textwidth}
-			\begin{itemize}
-				\item Browse buckets, download with presigned links.
-				\item On-the-fly ZIPs for folders; \texttt{aria2} manifests for bulk.
-				\item Derived data stored in a mirrored namespace.
-			\end{itemize}
-			\column{0.45\textwidth}
-			%\includegraphics[width=\textwidth]{img/screenshots/bucket_browser.png}
-		\end{columns}
+		
+		\begin{itemize}
+			\item Browse buckets and datasets directly from the interface.
+			\item Download with short-lived presigned links.
+			\item Create on-the-fly ZIP archives for folders.
+			\item Derived data stored in mirrored namespaces for clarity.
+		\end{itemize}
+		
+		\vspace{1em}
+		\centering
+		\includegraphics[width=0.8\textwidth]{otherResources/ui_bucket_experiment.png}
 	\end{frame}
 	
+	% --- Live demo ---
 	\begin{frame}
-		\frametitle{Keeping It Secure}
-		\begin{itemize}
-			\item Minimal scopes and group-based permissions.
-			\item Presigned links limited in time and scope.
-			\item Secrets managed by Kubernetes; TLS from the internal CA.
-		\end{itemize}
-	\end{frame}
-	
-	\begin{frame}
-		\frametitle{The Payoff}
-		\begin{itemize}
-			\item Data moves smoothly from the lab to ORFEO.
-			\item Files are stored in a standard (NeXus/NXem) from the start.
-			\item Researchers get a simple workflow, and data remains FAIR for the future.
-		\end{itemize}
+		\centering
+		\vfill
+		{\Huge \textbf{Live Demo}} \\[1.5em]
+		{\Large Let’s see the workflow in action.}
+		\vfill
 	\end{frame}
 	
 	\begin{frame}
 		\centering
-		\Large Questions?
+		\vfill
+		{\Huge \textbf{Thank you for your attention!}} \\[1.5em]
+		\vfill
 	\end{frame}
 	
 \end{document}
