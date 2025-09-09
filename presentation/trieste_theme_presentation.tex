@@ -9,6 +9,9 @@
 
 % Load all required packages for the theme
 \usepackage{otherResources/presentazione_allPackages}
+\usetikzlibrary{shapes.geometric, positioning}
+\usetikzlibrary{shapes.arrows, positioning}
+\usetikzlibrary{positioning,calc,arrows.meta,fit,backgrounds,matrix}
 
 % Document metadata
 \hypersetup{
@@ -87,7 +90,7 @@
 				\item \textbf{Need}: structured metadata, persistent IDs, scalable storage, simple tools.
 			\end{itemize}
 			\column{0.42\textwidth}
-			\includegraphics[width=\textwidth]{img/diagrams/data_fragments_placeholder.png}% optional
+			%\includegraphics[width=\textwidth]{img/diagrams/data_fragments_placeholder.png}% optional
 		\end{columns}
 	\end{frame}
 	
@@ -128,24 +131,33 @@
 			\tiny Source: \url{https://nffa-di.it/en/}
 		\end{columns}
 	\end{frame}
-
 	
 	% --- 2) Case study: LAME @ Area Science Park, ORFEO storage, current gap ---
-	
 	\begin{frame}
-		\frametitle{Institutional context}
-		\framesubtitle{LAME in Area Science Park and the ORFEO datacenter}
+		\frametitle{From the lab to the datacenter}
+		
 		\begin{columns}[T,totalwidth=\textwidth]
-			\column{0.50\textwidth}
+			% Left column: text
+			\column{0.55\textwidth}
 			\begin{itemize}
 				\item \textbf{LAME} produces multi-terabyte datasets in electron microscopy.
 				\item As part of NFFA-DI, its work depends on sharing data with other partners.
-				\item To support this, \textbf{ORFEO} provides the backbone: HPC resources, identity services, and S3-compatible object storage.
-				\item The challenge: connecting LAME’s lab workflows with ORFEO’s infrastructure in a smooth way.
+				\item To support this, \textbf{ORFEO} provides the backbone: HPC resources, 
+				identity services, and S3-compatible object storage.
+				\item The challenge: connecting LAME’s lab workflows with ORFEO’s infrastructure.
 			\end{itemize}
-			\column{0.50\textwidth}
-			\includegraphics[width=\textwidth]{otherResources/LAME_microscope.png}
-			%\includegraphics[width=\textwidth]{otherResources/ORFEO.png}
+			
+			% Right column: stacked images + arrow
+			\column{0.45\textwidth}
+			\centering
+			\begin{tikzpicture}[node distance=1.0cm]
+				% microscope node
+				\node (microscope) at (0,0.5) {\includegraphics[width=0.5\textwidth]{otherResources/LAME_microscope.png}};
+				% orfeo node placed below with manual shift
+				\node (orfeo) at (0,-3.0) {\includegraphics[width=0.5\textwidth]{otherResources/ORFEO.png}};
+				% arrow
+				\draw[->, line width=1.5mm, blue!60!black] ([yshift=+5mm]microscope.south) -- (orfeo.north);
+			\end{tikzpicture}
 		\end{columns}
 	\end{frame}
 	
@@ -189,77 +201,101 @@
 			\column{0.48\textwidth}
 			\textbf{Our proposal}
 			\begin{itemize}
-				\item Speak \textbf{S3} to move data directly into ORFEO.
-				\item Convert outputs to \textbf{NeXus/NXem} during ingestion.
-				\item Offer a simple web interface and an API for daily use.
+				\item \textbf{Transfer}: move data directly into ORFEO using the S3 protocol.
+				\item \textbf{Transform}: convert outputs (e.g.\ TIFF) into NeXus/NXem with standardized metadata.
+				\item \textbf{Integrate}: build on ORFEO’s existing services, with a simple web interface and API.
 			\end{itemize}
 		\end{columns}
-		
-		\vspace{0.5em}
-		\small\textit{We’ll go into details later — this closes the introduction.}
 	\end{frame}
 	
-	% --- 3) Thought process: core function, Django choice, full pipeline view, bridge to VirtualOrfeo ---
-	
 	\begin{frame}
-		\frametitle{The Core Idea}
+		\frametitle{Choosing a framework}
+		
+		To put our proposal into practice, we need a tool that researchers can actually use.  
+		That means building a \textbf{web application} that can:
+		
+		\vspace{1em}
 		\begin{itemize}
-			\item \textbf{Transfer}: data goes from LAME straight into ORFEO buckets.
-			\item \textbf{Transform}: TIFF files get converted into NeXus with normalized metadata.
-			\item We integrate existing services, not reinvent them.
+			\item guide researchers through projects, samples, and experiments,
+			\item handle uploads and metadata in a consistent way,
+			\item connect directly to ORFEO’s services (S3 storage, authentication).
 		\end{itemize}
+		
+		Once this was clear, the next step was to choose the right framework.
 	\end{frame}
 	
 	\begin{frame}
 		\frametitle{Why Django?}
+		
+		We needed a framework that was stable, flexible, and easy to maintain.  
+		Django fits well because it provides:
+		
+		\vspace{1em}
 		\begin{itemize}
-			\item A clear data model for projects, samples, and experiments.
-			\item Django REST Framework → easy APIs.
-			\item HTMX → dynamic UI without a heavy frontend.
-			\item RQ workers → handle background jobs (checksums, NeXus builds).
-			\item Solid ecosystem for authentication, migrations, and testing.
+			\item A structured way to model projects, samples, and experiments.
+			\item Built-in tools to create both a user interface and an API.
+			\item Support for background tasks such as data checks and conversions.
+			\item Strong support for authentication and long-term maintenance.
 		\end{itemize}
 	\end{frame}
 	
 	\begin{frame}
-		\frametitle{Thinking About the Whole Pipeline}
-		\begin{itemize}
-			\item The app is one piece in a larger chain: identity → ingress → storage → compute.
-			\item It only makes sense if the whole path is tested together.
-			\item Solution: a “digital twin” of ORFEO to try everything before production.
-		\end{itemize}
+		\frametitle{Thinking about the whole pipeline}
+		
+		\centering
+		\resizebox{\textwidth}{!}{%
+			\begin{tikzpicture}[thick]
+				
+				% geometry
+				\def\h{3.0}   % much taller
+				\def\w{3.0}   % body width before the tip
+				\def\t{1.0}   % tip / notch depth
+				
+				% one chevron at x-offset #1, with title #2, subtitle #3, and fill color #4
+				\newcommand{\chevron}[4]{%
+					\begin{scope}[shift={(#1,0)}]
+						\path[draw=black, fill=#4, line join=round]
+						(0,0) -- (\w,0) -- (\w+\t,0.5*\h) -- (\w,\h) -- (0,\h) -- (\t,0.5*\h) -- cycle;
+						% two lines: bold title + smaller subtitle
+						\node[align=center, xshift=7mm] at (\w/2,0.5*\h) {\textbf{#2} \\[0.3em] \scriptsize #3};
+					\end{scope}
+				}
+				
+				% chain of tall chevrons
+				\chevron{0*\w}{Application}{Django webapp}{green!35}
+				\chevron{1*\w}{Identity}{Auth, users}{teal!40}
+				\chevron{2*\w}{Ingress}{TLS front door}{cyan!40}
+				\chevron{3*\w}{Storage}{Ceph S3 buckets}{blue!30}
+				\chevron{4*\w}{Compute}{HPC jobs}{blue!45}
+				
+			\end{tikzpicture}%
+		}
+		
+		\vspace{1em}
+		\small The app is one part of this chain — testing only makes sense when the whole path is reproduced.  
+		Our solution: a \textbf{digital twin} of ORFEO.
 	\end{frame}
 	
 	% --- 4) VirtualOrfeo ---
-	
 	\begin{frame}
-		\frametitle{What VirtualOrfeo Is}
+		\frametitle{VirtualOrfeo}
+		
+		ORFEO is a complex infrastructure: identity, ingress, storage, and compute.  
+		Testing our Django app directly on production would be risky and slow.
+		
+		\vspace{1em}
 		\begin{itemize}
-			\item A small-scale copy of ORFEO built on K3s.
-			\item Includes ingress, TLS, Authentik/FreeIPA, Ceph RGW (or MinIO).
-			\item Same Helm charts and configs as production.
+			\item \textbf{VirtualOrfeo} is a lightweight clone of ORFEO, built on K3s.
+			\item It uses the same Helm charts and configs as production.
+			\item This lets us deploy the \textbf{Django app} in a realistic environment:
+			it can authenticate through Authentik, upload to S3 buckets,
+			and be accessed through the same ingress as in ORFEO.
 		\end{itemize}
 	\end{frame}
 	
 	\begin{frame}
-		\frametitle{What It Reproduces}
-		\begin{columns}[T,totalwidth=\textwidth]
-			\column{0.5\textwidth}
-			\textbf{Identity}
-			\begin{itemize}
-				\item FreeIPA + Authentik for SSO.
-			\end{itemize}
-			\textbf{Storage}
-			\begin{itemize}
-				\item Ceph RGW, presigned uploads/downloads.
-			\end{itemize}
-			\textbf{Deployment}
-			\begin{itemize}
-				\item App packaged with Helm, running web + workers + DB.
-			\end{itemize}
-			\column{0.5\textwidth}
-			\includegraphics[width=\textwidth]{img/diagrams/virtualorfeo_topology_placeholder.png}
-		\end{columns}
+		\frametitle{VirtualOrfeo topology}
+		\includegraphics[width=\textwidth]{otherResources/VirtualOrfeo_topology.png}
 	\end{frame}
 	
 	% --- 5) App walkthrough ---
@@ -271,7 +307,7 @@
 			\item Data plane: browser ↔ S3 using presigned URLs; metadata in Postgres.
 			\item Workers: checksum, metadata extraction, NeXus builds.
 		\end{itemize}
-		\includegraphics[width=\textwidth]{img/diagrams/app_architecture_placeholder.png}
+		%\includegraphics[width=\textwidth]{img/diagrams/app_architecture_placeholder.png
 	\end{frame}
 	
 	\begin{frame}
@@ -285,7 +321,7 @@
 				\item Group claims set roles; disabling an account works instantly.
 			\end{itemize}
 			\column{0.48\textwidth}
-			\includegraphics[width=\textwidth]{img/screenshots/login_authentik.png}
+			%\includegraphics[width=\textwidth]{img/screenshots/login_authentik.png}
 		\end{columns}
 	\end{frame}
 	
@@ -300,7 +336,7 @@
 				\item Same functionality via REST API for automation.
 			\end{itemize}
 			\column{0.48\textwidth}
-			\includegraphics[width=\textwidth]{img/screenshots/board_overview.png}
+			%\includegraphics[width=\textwidth]{img/screenshots/board_overview.png}
 		\end{columns}
 	\end{frame}
 	
@@ -315,7 +351,7 @@
 				\item Uploads automatically trigger checksum and registration jobs.
 			\end{itemize}
 			\column{0.45\textwidth}
-			\includegraphics[width=\textwidth]{img/screenshots/upload_form.png}
+			%\includegraphics[width=\textwidth]{img/screenshots/upload_form.png}
 		\end{columns}
 	\end{frame}
 	
@@ -330,7 +366,7 @@
 				\item Build \texttt{.nxs} files with a standard structure.
 			\end{itemize}
 			\column{0.48\textwidth}
-			\includegraphics[width=\textwidth]{img/screenshots/nexus_preview.png}
+			%\includegraphics[width=\textwidth]{img/screenshots/nexus_preview.png}
 		\end{columns}
 	\end{frame}
 	
@@ -345,7 +381,7 @@
 				\item Monitoring via web UI and structured logs.
 			\end{itemize}
 			\column{0.48\textwidth}
-			\includegraphics[width=\textwidth]{img/screenshots/rq_dashboard.png}
+			%\includegraphics[width=\textwidth]{img/screenshots/rq_dashboard.png}
 		\end{columns}
 	\end{frame}
 	
@@ -360,7 +396,7 @@
 				\item Derived data stored in a mirrored namespace.
 			\end{itemize}
 			\column{0.45\textwidth}
-			\includegraphics[width=\textwidth]{img/screenshots/bucket_browser.png}
+			%\includegraphics[width=\textwidth]{img/screenshots/bucket_browser.png}
 		\end{columns}
 	\end{frame}
 	
