@@ -79,29 +79,18 @@
 	% --- 1) Intro: EM, data, issues, needs ---
 	
 	\begin{frame}
-		\frametitle{Electron microscopy at a glance}
+		\frametitle{Electron microscopy data: an overview}
+		
 		\begin{itemize}
-			\item Different modes: TEM, SEM, STEM → images, diffraction patterns, spectra.
-			\item The data: large, complex, and very diverse in shape and size.
-			\item The reality: every vendor has their own format, metadata is often incomplete.
+			\item Instruments (TEM, SEM, STEM) generate images, diffraction patterns, and spectra —
+			often multi-terabyte datasets.
+			\item Each vendor uses their own file formats; metadata is often incomplete or inconsistent.
+			\item Day-to-day handling is messy: manual copies, endless zip files, unclear provenance.
+			\item This makes collaboration and reuse difficult.
 		\end{itemize}
+		
 		\vspace{0.5em}
-		\small\textit{The key question: how do we make these outputs easier to reuse and share?}
-	\end{frame}
-	
-	\begin{frame}
-		\frametitle{Current Problems and What’s Needed}
-		\begin{columns}[T,totalwidth=\textwidth]
-			\column{0.58\textwidth}
-			\begin{itemize}
-				\item \textbf{Fragmentation}: many formats, weak or missing metadata.
-				\item \textbf{Friction}: manual copying, endless zip files, confusing naming.
-				\item \textbf{Collaboration}: unclear provenance, scattered access, hard to reuse.
-				\item \textbf{Need}: structured metadata, persistent IDs, scalable storage, simple tools.
-			\end{itemize}
-			\column{0.42\textwidth}
-			%\includegraphics[width=\textwidth]{otherResources/data_fragments_placeholder.png}% optional
-		\end{columns}
+		\small\textit{The challenge: how do we handle this data so it remains usable and shareable?}
 	\end{frame}
 	
 	% --- FAIR + NeXus (rewritten) ---
@@ -142,6 +131,19 @@
 		\end{columns}
 	\end{frame}
 	
+	% --- Introducing LAME ---
+	\begin{frame}
+		\frametitle{Introducing LAME}
+		
+		\begin{itemize}
+			\item LAME = Electron Microscopy Lab at Area Science Park, opened in 2022.
+			\item Core instrument: a \textbf{double-corrected TEM/STEM} with advanced detectors.
+			\item Enables atomic-scale imaging, spectroscopy, and in situ experiments 
+			(gas, heating, electrical bias).
+			\item Supports nanoscience projects within NFFA-DI and European collaborations.
+		\end{itemize}
+	\end{frame}
+	
 	% --- 2) Case study: LAME @ Area Science Park, ORFEO storage, current gap ---
 	\begin{frame}
 		\frametitle{From the lab to the datacenter}
@@ -173,27 +175,34 @@
 	
 	\begin{frame}
 		\frametitle{ORFEO’s storage model}
-		\framesubtitle{Objects, not files}
 		
-		ORFEO does not use a classic file-and-folder hierarchy.  
-		Instead, data is stored as \textbf{objects} inside \textbf{buckets}, managed by Ceph RGW with the S3 protocol.  
-		Each object combines the raw data with flexible metadata, which makes it easier to describe and reuse datasets.
+		For LAME, ORFEO relies on an \textbf{object storage} system:
+		
+		\begin{itemize}
+			\item An \textbf{object} is a file together with all the metadata that describes it.
+			\item A \textbf{bucket} is a container that holds objects (like a project folder, but flatter).
+			\item Access is through the \textbf{S3 protocol}, which is scalable and widely supported.
+		\end{itemize}
 		
 		\centering
-		\includegraphics[width=0.7\textwidth]{otherResources/CEPH_RGW_diagram.png} % replace with your diagram
+		\includegraphics[width=0.65\textwidth]{otherResources/CEPH_RGW_diagram.png} % replace with your diagram
 	\end{frame}
 		
 	\begin{frame}
 		\frametitle{Accessing ORFEO}
-		\framesubtitle{One front door for all services}
+		\framesubtitle{Centralized identity}
 		
-		All access to ORFEO’s resources goes through a single \textbf{Ingress} endpoint.  
-		Connections are secured with \textbf{TLS certificates}, and identity is handled by  
-		\textbf{FreeIPA} and \textbf{Authentik}, providing single sign-on across services.
+		Access to ORFEO is managed through a \textbf{central identity system}:
+		
+		\begin{itemize}
+			\item \textbf{FreeIPA} provides the underlying user and group management.
+			\item \textbf{Authentik} builds on top of it to offer modern single sign-on (SSO).
+			\item Users log in once and get consistent access across all services.
+		\end{itemize}
 		
 		\vspace{1em}
 		\centering
-		\includegraphics[width=0.8\textwidth]{otherResources/authentik_login.png} % placeholder diagram
+		\includegraphics[width=0.65\textwidth]{otherResources/authentik_login.png} % placeholder
 	\end{frame}
 	
 	\begin{frame}
@@ -237,15 +246,14 @@
 	\begin{frame}
 		\frametitle{Why Django?}
 		
-		We needed a framework that was stable, flexible, and easy to maintain.  
-		Django fits well because it provides:
+		We chose Django because it makes it easy to translate lab workflows into software:
 		
-		\vspace{1em}
 		\begin{itemize}
-			\item A structured way to model projects, samples, and experiments.
-			\item Built-in tools to create both a user interface and an API.
-			\item Support for background tasks such as data checks and conversions.
-			\item Strong support for authentication and long-term maintenance.
+			\item \textbf{Models} let us map real-world entities  
+			(projects, samples, experiments, measurements) directly into the database.
+			\item Comes with both a user-friendly interface and a REST API, so work can be manual or automated.
+			\item Plays well with background workers for tasks like checksums and NeXus conversion.
+			\item Strong authentication support, fitting smoothly into ORFEO.
 		\end{itemize}
 	\end{frame}
 	
@@ -274,7 +282,7 @@
 				% chain of tall chevrons
 				\chevron{0*\w}{Application}{Django webapp}{green!35}
 				\chevron{1*\w}{Identity}{Auth, users}{teal!40}
-				\chevron{2*\w}{Ingress}{TLS front door}{cyan!40}
+				\chevron{2*\w}{Ingress}{The front door}{cyan!40}
 				\chevron{3*\w}{Storage}{Ceph S3 buckets}{blue!30}
 				\chevron{4*\w}{Compute}{HPC jobs}{blue!45}
 				
@@ -283,7 +291,7 @@
 		
 		\vspace{1em}
 		\small The app is one part of this chain — testing only makes sense when the whole path is reproduced.  
-		Our solution: a \textbf{digital twin} of ORFEO.
+		The solution: a \textbf{digital twin} of ORFEO.
 	\end{frame}
 	
 	% --- 4) VirtualOrfeo ---
@@ -308,24 +316,18 @@
 		\includegraphics[width=\textwidth]{otherResources/VirtualOrfeo_topology.png}
 	\end{frame}
 	
-	% --- 5) App walkthrough ---
-	
+	% --- 5) App walkthrough ---	
 	\begin{frame}
 		\frametitle{Application overview}
 		
-		The webapp ties together three main layers:
+		The webapp is designed around three main pillars that keep data organized, 
+		easy to move, and ready to be reused:
 		
 		\vspace{0.8em}
 		\begin{itemize}
-			\item \textbf{Domain model}  
-			Projects contain proposals, samples, experiments, and their measurements.
-			
-			\item \textbf{Data flow}  
-			Files go directly into S3 buckets (via presigned URLs), 
-			while metadata lives in Postgres.
-			
-			\item \textbf{Background workers}  
-			Dedicated pods run checksums, extract metadata, and generate NeXus files.
+			\item \textbf{Structure} — organize research work into a consistent model.
+			\item \textbf{Flow} — move data reliably into storage with linked metadata.
+			\item \textbf{Automation} — offload heavy tasks to background workers.
 		\end{itemize}
 	\end{frame}
 	
@@ -369,20 +371,20 @@
 		This keeps context together with raw data, making results easier to track and reuse.
 	\end{frame}
 	
-	% --- Managing research data in practice ---
-	\begin{frame}
-		\frametitle{Managing research data in practice}
-		
-		\begin{itemize}
-			\item Three-pane board to browse and link projects, samples, and experiments.
-			\item Metadata (context) stored alongside raw data (\texttt{README.txt}).
-			\item Same operations available via REST API for automation.
-		\end{itemize}
-		
-		\vspace{1em}
-		\centering
-		\includegraphics[width=0.8\textwidth]{otherResources/ui_add_measurement.png}
-	\end{frame}
+		% --- Managing research data in practice ---
+		\begin{frame}
+			\frametitle{Managing research data in practice}
+			
+			\begin{itemize}
+				\item Three-pane board to browse and link projects, samples, and experiments.
+				\item Metadata (context) stored alongside raw data (\texttt{README.txt}).
+				\item Same operations available via REST API for automation.
+			\end{itemize}
+			
+			\vspace{1em}
+			\centering
+			\includegraphics[width=0.8\textwidth]{otherResources/ui_add_measurement.png}
+		\end{frame}
 	
 	% --- Uploading data ---
 	\begin{frame}
@@ -408,7 +410,6 @@
 			\item A \textbf{worker pod} runs in the cluster, always listening to Redis (a shared \textbf{to-do list}).  
 			\item When a file is uploaded, the app enqueues jobs such as:  
 			\begin{itemize}
-				\item Integrity check (checksum).  
 				\item Metadata extraction (parse TIFF headers or JSON).  
 				\item Normalization into NXem fields.  
 				\item NeXus generation: structured \texttt{.nxs} file with metadata.  
