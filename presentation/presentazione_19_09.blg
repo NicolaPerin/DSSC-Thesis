@@ -1,5 +1,5 @@
 [0] Config.pm:307> INFO - This is Biber 2.19
 [0] Config.pm:310> INFO - Logfile is 'presentazione_19_09.blg'
-[56] biber:340> INFO - === Fri Sep 19, 2025, 00:31:05
-[152] Utils.pm:399> ERROR - Cannot find 'presentazione_19_09.bcf'!
-[152] Biber.pm:136> INFO - ERRORS: 1
+[51] biber:340> INFO - === Fri Sep 19, 2025, 08:35:23
+[132] Utils.pm:399> ERROR - Cannot find 'presentazione_19_09.bcf'!
+[133] Biber.pm:136> INFO - ERRORS: 1

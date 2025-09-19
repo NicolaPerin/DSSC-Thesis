@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2025.8.25)  19 SEP 2025 00:31
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2025.8.25)  19 SEP 2025 09:22
 entering extended mode
  \write18 enabled.
  %&-line parsing enabled.
@@ -1552,24 +1552,24 @@ Overfull \hbox (0.81528pt too wide) has occurred while \output is active
 [7
 
 ]
-Overfull \hbox (0.81528pt too wide) in paragraph at lines 253--253
+Overfull \hbox (0.81528pt too wide) in paragraph at lines 252--252
 [][]  
  []
 
 
-Overfull \hbox (3.63995pt too wide) in paragraph at lines 253--253
+Overfull \hbox (3.63995pt too wide) in paragraph at lines 252--252
 [][]  
  []
 
 
-Overfull \hbox (1.05634pt too wide) in paragraph at lines 253--253
+Overfull \hbox (1.05634pt too wide) in paragraph at lines 252--252
 [][][][]  
  []
 
 File: otherResources/background-blu.png Graphic file (type png)
 <use otherResources/background-blu.png>
 Package pdftex.def Info: otherResources/background-blu.png  used on input line 
-253.
+252.
 (pdftex.def)             Requested size: 394.99034pt x 246.86803pt.
 
 Overfull \hbox (3.63995pt too wide) has occurred while \output is active
@@ -1589,17 +1589,17 @@ Overfull \hbox (0.81528pt too wide) has occurred while \output is active
 [8
 
 ]
-Overfull \hbox (0.81528pt too wide) in paragraph at lines 298--298
+Overfull \hbox (0.81528pt too wide) in paragraph at lines 297--297
 [][]  
  []
 
 
-Overfull \hbox (3.63995pt too wide) in paragraph at lines 298--298
+Overfull \hbox (3.63995pt too wide) in paragraph at lines 297--297
 [][]  
  []
 
 
-Overfull \hbox (1.05634pt too wide) in paragraph at lines 298--298
+Overfull \hbox (1.05634pt too wide) in paragraph at lines 297--297
 [][][][]  
  []
 
@@ -1608,7 +1608,7 @@ Overfull \hbox (1.05634pt too wide) in paragraph at lines 298--298
 File: otherResources/ui_modal_new_sample_slim.png Graphic file (type png)
 <use otherResources/ui_modal_new_sample_slim.png>
 Package pdftex.def Info: otherResources/ui_modal_new_sample_slim.png  used on i
-nput line 298.
+nput line 297.
 (pdftex.def)             Requested size: 129.06117pt x 104.79428pt.
 \bottomimgheight=\skip74
 <otherResources/ui_add_measurement_slim.png, id=271, 1102.1175pt x 394.47375pt>
@@ -1616,12 +1616,12 @@ nput line 298.
 File: otherResources/ui_add_measurement_slim.png Graphic file (type png)
 <use otherResources/ui_add_measurement_slim.png>
 Package pdftex.def Info: otherResources/ui_add_measurement_slim.png  used on in
-put line 298.
+put line 297.
 (pdftex.def)             Requested size: 309.56827pt x 110.801pt.
 File: otherResources/background-blu.png Graphic file (type png)
 <use otherResources/background-blu.png>
 Package pdftex.def Info: otherResources/background-blu.png  used on input line 
-298.
+297.
 (pdftex.def)             Requested size: 394.99034pt x 246.86803pt.
 
 Overfull \hbox (3.63995pt too wide) has occurred while \output is active
@@ -1642,24 +1642,24 @@ Overfull \hbox (0.81528pt too wide) has occurred while \output is active
 
  <./otherResources/ui_modal_new_sample_slim.png> <./otherResources/ui_add_measu
 rement_slim.png>]
-Overfull \hbox (0.81528pt too wide) in paragraph at lines 308--308
+Overfull \hbox (0.81528pt too wide) in paragraph at lines 309--309
 [][]  
  []
 
 
-Overfull \hbox (3.63995pt too wide) in paragraph at lines 308--308
+Overfull \hbox (3.63995pt too wide) in paragraph at lines 309--309
 [][]  
  []
 
 
-Overfull \hbox (1.05634pt too wide) in paragraph at lines 308--308
+Overfull \hbox (1.05634pt too wide) in paragraph at lines 309--309
 [][][][]  
  []
 
 File: otherResources/background-blu.png Graphic file (type png)
 <use otherResources/background-blu.png>
 Package pdftex.def Info: otherResources/background-blu.png  used on input line 
-308.
+309.
 (pdftex.def)             Requested size: 394.99034pt x 246.86803pt.
 
 Overfull \hbox (3.63995pt too wide) has occurred while \output is active
@@ -1679,24 +1679,24 @@ Overfull \hbox (0.81528pt too wide) has occurred while \output is active
 [10
 
 ]
-Overfull \hbox (0.81528pt too wide) in paragraph at lines 320--320
+Overfull \hbox (0.81528pt too wide) in paragraph at lines 322--322
 [][]  
  []
 
 
-Overfull \hbox (3.63995pt too wide) in paragraph at lines 320--320
+Overfull \hbox (3.63995pt too wide) in paragraph at lines 322--322
 [][]  
  []
 
 
-Overfull \hbox (1.05634pt too wide) in paragraph at lines 320--320
+Overfull \hbox (1.05634pt too wide) in paragraph at lines 322--322
 [][][][]  
  []
 
 File: otherResources/background-blu.png Graphic file (type png)
 <use otherResources/background-blu.png>
 Package pdftex.def Info: otherResources/background-blu.png  used on input line 
-320.
+322.
 (pdftex.def)             Requested size: 394.99034pt x 246.86803pt.
 
 Overfull \hbox (3.63995pt too wide) has occurred while \output is active
@@ -1716,24 +1716,24 @@ Overfull \hbox (0.81528pt too wide) has occurred while \output is active
 [11
 
 ]
-Overfull \hbox (0.81528pt too wide) in paragraph at lines 331--331
+Overfull \hbox (0.81528pt too wide) in paragraph at lines 333--333
 [][]  
  []
 
 
-Overfull \hbox (3.63995pt too wide) in paragraph at lines 331--331
+Overfull \hbox (3.63995pt too wide) in paragraph at lines 333--333
 [][]  
  []
 
 
-Overfull \hbox (1.05634pt too wide) in paragraph at lines 331--331
+Overfull \hbox (1.05634pt too wide) in paragraph at lines 333--333
 [][][][]  
  []
 
 File: otherResources/background-blu.png Graphic file (type png)
 <use otherResources/background-blu.png>
 Package pdftex.def Info: otherResources/background-blu.png  used on input line 
-331.
+333.
 (pdftex.def)             Requested size: 394.99034pt x 246.86803pt.
 
 Overfull \hbox (3.63995pt too wide) has occurred while \output is active
@@ -1787,7 +1787,7 @@ super/sfss1200.pfb></usr/share/texmf/fonts/type1/public/cm-super/sfsx1000.pfb><
 ts/type1/public/cm-super/sfsx1440.pfb></usr/share/texmf/fonts/type1/public/cm-s
 uper/sfsx2488.pfb></usr/share/texmf/fonts/type1/public/cm-super/sftt0800.pfb></
 usr/share/texmf/fonts/type1/public/cm-super/sftt1095.pfb>
-Output written on presentazione_19_09.pdf (12 pages, 1237307 bytes).
+Output written on presentazione_19_09.pdf (12 pages, 1237640 bytes).
 PDF statistics:
  454 PDF objects out of 1000 (max. 8388607)
  367 compressed objects within 4 object streams

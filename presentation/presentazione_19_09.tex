@@ -243,8 +243,7 @@
 		
 		\textbf{The application}
 		\begin{itemize}
-			\item Built with \textbf{Django}, modeling research workflow as:  
-			
+			\item Built with \textbf{Django}, modeling research workflow as:
 			\textbf{Project / Proposal / Sample / Experiment / Measure}.
 			\item Manages user identities through Authentik.
 			\item Interacts with Ceph via the \textbf{Amazon S3 API}.
@@ -299,23 +298,26 @@
 	
 	\begin{frame}
 		\frametitle{Testing \& deployment: \textit{VirtualOrfeo}}
+		\textbf{VirtualOrfeo} is a lightweight digital twin of the ORFEO datacenter. It consists of multiple \textbf{virtual machines} and configuration files, simulating:
 		\begin{itemize}
-			\item A lightweight clone of the ORFEO datacenter.
-			\item Same configuration as production (K3s cluster, storage, identity). 
-			\item Allowed realistic testing of the pipeline before deployment.
-			\item Reduced risk by validating uploads, NeXus conversion, and access control in a safe environment.
+			\item storage
+			\item identity
+			\item compute nodes
 		\end{itemize}
+		 The Django web application is packaged as a \textbf{container} and deployed inside the \textbf{Kubernetes (K3s) cluster}, 
+		 integrated with storage and identity services as in production.
 	\end{frame}
 	
 	\begin{frame}
 		\frametitle{Conclusions}
-		
 		\begin{itemize}
 			\item \textbf{Pipeline}: from lab capture to FAIR data in ORFEO.
 			\item \textbf{Webapp}: practical tool for projects, uploads, and NeXus conversion.
 			\item \textbf{Validation}: tested end-to-end on VirtualOrfeo.
 			\item \textbf{Impact}: reusable design for NFFA-DI and other labs.
-			\item \textbf{Next}: tighter metadata automation, integration with analysis workflows.
+			\item \textbf{Modularity}: the app can interact with \textbf{external services}  
+			(e.g.\ machine learning analysis, data management plan tools)  
+			through \textbf{APIs}, all testable within VirtualOrfeo.
 		\end{itemize}
 	\end{frame}
 	
