@@ -56,7 +56,7 @@
 		\large
 		\begin{enumerate}
 			\item Data management challenges in electron microscopy
-			\item Scientific foundations: FAIR data and standards
+			\item A possible solution: FAIR principles
 			\item Our infrastructure: LAME and ORFEO
 			\item Pipeline and platform design
 		\end{enumerate}
@@ -97,16 +97,19 @@
 	% Scientific solution – FAIR + NeXus/NXem
 	% =====================
 	\begin{frame}
-		\frametitle{Scientific solution: FAIR and standards}
+		\frametitle{A possible solution: FAIR principles}
 		\begin{columns}[T,totalwidth=\textwidth]
 			\column{0.60\textwidth}
 			\begin{itemize}
-				\item \textbf{FAIR} = Findable, Accessible, Interoperable, Reusable.  
-				Goal: data remain useful beyond the lab and the project.
-				\item \textbf{NeXus}: international standard on top of HDF5 for structured scientific data  
-				(e.g. \texttt{NXinstrument}, \texttt{NXsample}).
-				\item \textbf{NXem}: new NeXus application definition for electron microscopy.  
-				Ensures images, diffraction, spectra and metadata are stored consistently.
+				\item \textbf{FAIR} = 
+				\begin{itemize}
+					\item \textbf{Findable}: unique identifiers, searchable metadata.  
+					\item \textbf{Accessible}: stored on shared infrastructure, retrievable without manual copies.    
+					\item \textbf{Interoperable}: common formats and vocabularies.  
+					\item \textbf{Reusable}: provide context and metadata so data remain useful over time.
+				\end{itemize}
+				\item \textbf{NeXus}: international standard on top of HDF5 for structured scientific data.
+				\item \textbf{NXem}: NeXus application definition for electron microscopy.
 			\end{itemize}
 			\column{0.4\textwidth}
 			\includegraphics[width=\linewidth]{otherResources/FAIR_data_principles.png}\\[0.5em]
@@ -118,7 +121,7 @@
 	% 5) Scientific solution – NFFA-DI
 	% =====================
 	\begin{frame}
-		\frametitle{Scientific solution: NFFA-DI}
+		\frametitle{From principles to practice: NFFA-DI}
 		\begin{columns}[T,totalwidth=\textwidth]
 			\column{0.55\textwidth}
 			\begin{itemize}
@@ -234,17 +237,16 @@
 		
 		\textbf{The infrastructure}
 		\begin{itemize}
-			\item \textbf{Authentik}: centralized single sign-on (SSO).
-			\item \textbf{Ceph storage}: a distributed object store.  
-			Data are split into \textbf{objects}, replicated across many servers → scalable and fault-tolerant.
+			\item \textbf{Authentik}: an open-source identity provider used for single sign-on (SSO)
+			\item \textbf{Storage}: \textbf{Ceph}, a distributed storage system with the \textbf{RADOS Gateway} interface that organizes data as \textbf{objects} inside \textbf{buckets}.
 		\end{itemize}
 		
 		\vspace{0.8em}
 		
 		\textbf{The application}
 		\begin{itemize}
-			\item Built with \textbf{Django}, modeling research workflow as:
-			\textbf{Project / Proposal / Sample / Experiment / Measure}.
+			\item Built with \textbf{Django} and \textbf{PostgreSQL}, modeling research workflow as:
+			\textbf{Project / Proposal / Sample / Experiment / Measurement}.
 			\item Manages user identities through Authentik.
 			\item Interacts with Ceph via the \textbf{Amazon S3 API}.
 			\item Runs \textbf{background tasks} (NeXus conversion).
